@@ -1,0 +1,5 @@
+# GL-Life
+GL-Life is a study in the parallelization of particle simulations using [GLSL](https://en.wikipedia.org/wiki/OpenGL_Shading_Language#:~:text=OpenGL%20Shading%20Language%20(GLSL)%20is,on%20the%20C%20programming%20language.). To efficiently execute particle simulations without compromising on accuracy, hardware acceleration is often desired. The key to translating algorithms written in general-purpose programming languages to GLSL is adapting data structures and algorithms to the limited ones provided by GLSL. Beyond computational efficiency, GLSL is portable such that once implemented, the single GLSL source file can be embedded in many different contexts, such as a native application binary or in the browser.
+
+## Using
+This project was built using the [p5.vscode](https://marketplace.visualstudio.com/items?itemName=samplavigne.p5-vscode) extension. Once cloned, open this project with VSCode and use `CTRL/CMD+L`, `CTRL/CMD+O` to start serving on localhost.
