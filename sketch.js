@@ -16,5 +16,9 @@ function draw() {
 
   // Draw a rectangle that covers the entire canvas
   // rect(-width * 5, -height * 5, width * 5, height * 5); // Aligns the rectangle with the canvas
-  quad(-1, -1, 1, -1, 1, 1, -1, 1)
+  quad(-1, -1, 1, -1, 1, 1, -1, 1);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
 }
