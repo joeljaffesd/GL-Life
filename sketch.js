@@ -1,4 +1,6 @@
 let shaderProgram;
+let first = true;
+let next, previous;
 
 function preload() {
   // Load the vertex and fragment shaders from the shaders directory
@@ -8,15 +10,26 @@ function preload() {
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
   noStroke();
+
+  const options = {
+    textureFiltering: LINEAR,
+    format: FLOAT,
+  };
+  previous = createFramebuffer(options);
+  next = createFramebuffer(options);
 }
 
 function draw() {
   // Use the shader program
   shader(shaderProgram);
 
-  // Draw a rectangle that covers the entire canvas
-  // rect(-width * 5, -height * 5, width * 5, height * 5); // Aligns the rectangle with the canvas
-  quad(-1, -1, 1, -1, 1, 1, -1, 1);
+  // set uniforms
+  shaderProgram.setUniform("uPrevious", previous);
+  shaderProgram.setUniform("uFirst", first);
+
+  [previous, next] = [next, previous]; // buffer swap
+  quad(-1, -1, 1, -1, 1, 1, -1, 1); // canvas
+  first = false; // first flag
 }
 
 function windowResized() {
