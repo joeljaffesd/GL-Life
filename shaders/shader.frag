@@ -9,7 +9,8 @@ uniform bool uFirst;
 
 void main() {
   if (uFirst) {
-    gl_FragColor = vec4(vTexCoord.x, vTexCoord.y, 0.5, 1.0);
+    // gl_FragColor = vec4(vTexCoord.x, vTexCoord.y, 0.5, 1.0);
+    gl_FragColor = vec4(vec3(0.0), 1.0);
   } else {
     // Sample the previous frame's texture
     vec4 previousColor = texture2D(uPrevious, vTexCoord);
