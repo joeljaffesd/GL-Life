@@ -14,10 +14,8 @@ void main() {
     // Sample the previous frame's texture
     vec4 previousColor = texture2D(uPrevious, vTexCoord);
     vec3 prevRGB = previousColor.rgb;
-
-    // Blend the current gradient with the previous frame's color
-    vec3 incrementedColor = prevRGB + vec3(0.01, 0.01, 0.01); // Increment color values
-    incrementedColor = mod(incrementedColor, vec3(1.0)); // Wrap values to stay within [0.0, 1.0]
-    gl_FragColor = vec4(incrementedColor, 0.0);
+    prevRGB = prevRGB + vec3(0.01);
+    prevRGB = mod(prevRGB, vec3(1.0));
+    gl_FragColor = vec4(prevRGB, 1.0);
   }
 }
