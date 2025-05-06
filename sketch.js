@@ -19,32 +19,21 @@ function setup() {
   next = createFramebuffer(options);
 }
 
-// function draw() {
-//   // Use the shader program
-//   shader(shaderProgram);
-
-//   // set uniforms
-//   shaderProgram.setUniform("uPrevious", previous);
-//   shaderProgram.setUniform("uFirst", first);
-
-//   quad(-1, -1, 1, -1, 1, 1, -1, 1); // canvas
-//   [previous, next] = [next, previous]; // buffer swap
-//   first = false; // first flag
-// }
-
 function draw() {
-  // First, render to the next framebuffer
+  // First pass: render to the offscreen framebuffer, writing the sawtooth pattern.
   next.begin();
   shader(shaderProgram);
   shaderProgram.setUniform("uPrevious", previous);
   shaderProgram.setUniform("uFirst", first);
+  shaderProgram.setUniform("uDisplay", false);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   next.end();
   
-  // Then render to canvas (display the result)
+  // Second pass: render the feedback to the canvas, applying waveshaping.
   shader(shaderProgram);
   shaderProgram.setUniform("uPrevious", next);
   shaderProgram.setUniform("uFirst", false);
+  shaderProgram.setUniform("uDisplay", true);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   
   // Swap buffers for next frame
