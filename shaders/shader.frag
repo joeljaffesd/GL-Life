@@ -2,13 +2,6 @@
 
 precision mediump float;
 
-// variables for handling frame buffering
-varying vec2 vTexCoord;
-uniform sampler2D uPrevious;
-uniform bool uFirst;
-uniform bool uDisplay; // new uniform to indicate display mode
-
-
 // simulation variables from `../reference/particleLife.js`
 //===============================================================
 
@@ -36,6 +29,12 @@ uniform vec2 uResolution;         // Texture size (numParticles x 1) ???
 uniform float uK;
 uniform float uFriction;
 uniform int uNumTypes; // 6 is fine
+
+// variables for handling frame buffering
+varying vec2 vTexCoord;
+uniform sampler2D uPrevious;
+uniform bool uFirst;
+uniform bool uDisplay; // new uniform to indicate display mode
 
 void main() {
   if (uFirst) { // special case for the first frame

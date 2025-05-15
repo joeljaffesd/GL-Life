@@ -28,6 +28,7 @@ function draw() {
   shaderProgram.setUniform("uDisplay", false);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   next.end();
+  first = false; // set first to false after first pass
   
   // Second pass: render the feedback to the canvas, applying waveshaping.
   shader(shaderProgram);
@@ -38,7 +39,6 @@ function draw() {
   
   // Swap buffers for next frame
   [previous, next] = [next, previous];
-  first = false;
 }
 
 function windowResized() {
