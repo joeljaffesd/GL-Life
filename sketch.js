@@ -23,6 +23,7 @@ function draw() {
   // First pass: render to the offscreen framebuffer, writing the sawtooth pattern.
   next.begin();
   shader(shaderProgram);
+  shaderProgram.setUniform("uNumTypes", 3);
   shaderProgram.setUniform("uPrevious", previous);
   shaderProgram.setUniform("uFirst", first);
   shaderProgram.setUniform("uDisplay", false);

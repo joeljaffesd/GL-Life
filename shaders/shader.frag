@@ -40,24 +40,44 @@ void main() {
   if (uFirst) { // special case for the first frame
 
     // Initial condition
-    gl_FragColor = vec4(vec3(0.0), 1.0);
+    // gl_FragColor = vec4(vec3(0.0), 1.0);
+
+    // conditionally populate a limited number of particles, of 3 types
+    if (vTexCoord.x < 0.5 && vTexCoord.y > 0.5) {
+      // Use pixel coordinates to create a type index
+      int index = int(mod(float(gl_FragCoord.x), float(uNumTypes)));
+      // Map index to color
+      vec3 color;
+      if (index == 0) {
+        color = vec3(1.0, 0.0, 0.0); // red
+      } else if (index == 1) {
+        color = vec3(0.0, 1.0, 0.0); // green
+      } else if (index == 2) {
+        color = vec3(0.0, 0.0, 1.0); // blue
+      } else { 
+        color = vec3(1.0); // fallback (white)
+      }
+      gl_FragColor = vec4(color, 1.0);
+    } else {
+      gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); // black
+    }
 
   } else {
-    // Sample the previous frame's texture and update sawtooth phase
-    vec4 previousColor = texture2D(uPrevious, vTexCoord);
-    vec3 saw = mod(previousColor.rgb + vec3(0.01), vec3(1.0));
-    
-    if(!uDisplay) { // if !uDisplay, simulation code:
-
-      // Write the sawtooth value into the feedback buffer
-      gl_FragColor = vec4(saw, 1.0);
-
-    } else { // if uDisplay, drawing code:
-
-      // Apply a wave shaper (e.g. a simple sine function) for display
-      vec3 wave = sin(saw * 3.14159);
-      gl_FragColor = vec4(wave, 1.0);
-      
+    // for now, just render previous frame (visualizing initial conditions)
+    if (!uDisplay) {
+      vec4 previousColor = texture2D(uPrevious, vTexCoord);
+      gl_FragColor = previousColor;
+    } else {
+      vec4 previousColor = texture2D(uPrevious, vTexCoord);
+      gl_FragColor = previousColor;
     }
   }
 }
+
+//===============================================================
+/*
+NOTES:
+gl_FragCoord is the pixel coordinate in [0, width] x [0, height]
+vTexCoord is the normalized coordinate in [0, 1] x [0, 1]
+
+*/
