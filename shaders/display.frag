@@ -24,9 +24,7 @@ void main() {
   vec2 pixelPos = vTexCoord;
   
   // Loop through all particles
-  for(int i = 0; i < 1000; i++) { // Using a fixed upper bound
-    // Skip if we exceed the actual number of particles
-    if(i >= uNumParticles) break;
+  for(int i = 0; i < uNumParticles; i++) { 
     
     // Use texelFetch to access exact particle data without interpolation
     vec4 particleData = texelFetch(uSimState, ivec2(i, 0), 0);

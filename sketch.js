@@ -18,11 +18,13 @@ let agentsPrev, agentsNext, display; // framebuffers for simulation and display
 let numParticles = 1000; // Number of particles to simulate
 let numTypes = 6; // Number of particle types
 
+// load shaders
 function preload() {
   simProgram = loadShader('shaders/shader.vert', 'shaders/simulation.frag');
   displayProgram = loadShader('shaders/shader.vert', 'shaders/display.frag');
 }
 
+// setup "data bus"
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
   noStroke();
@@ -44,6 +46,7 @@ function setup() {
   display = createFramebuffer(displayOptions);
 }
 
+// per-frame sim-step and draw
 function draw() {
   // First pass: render to the offscreen framebuffer, performing the simulation step.
   agentsNext.begin();
@@ -55,7 +58,7 @@ function draw() {
   simProgram.setUniform("uResolution", [width, height]);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
-  first = false; // set first to false after first pass
+  // first = false; // set first to false after first pass
   
   // Second pass: render the agents to the display framebuffer.
   shader(displayProgram);
@@ -70,6 +73,7 @@ function draw() {
   [agentsPrev, agentsNext] = [agentsNext, agentsPrev];
 }
 
+// handle window resizing
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
