@@ -1,45 +1,57 @@
-let shaderProgram;
+let simProgram, displayProgram;
 let first = true;
-let next, previous;
+let agentsPrev, agentsNext, display;
 
 function preload() {
-  // Load the vertex and fragment shaders from the shaders directory
-  shaderProgram = loadShader('shaders/shader.vert', 'shaders/shader.frag');
+  simProgram = loadShader('shaders/shader.vert', 'shaders/simulation.frag');
+  displayProgram = loadShader('shaders/shader.vert', 'shaders/display.frag');
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
   noStroke();
 
-  const options = {
+  const agentsOptions = {
+    width: 1000,
+    height: 1,
     textureFiltering: LINEAR,
     format: FLOAT,
   };
-  previous = createFramebuffer(options);
-  next = createFramebuffer(options);
+
+  const displayOptions = {
+    textureFiltering: LINEAR,
+    format: FLOAT,
+  };
+
+  agentsPrev = createFramebuffer(agentsOptions);
+  agentsNext = createFramebuffer(agentsOptions);
+  display = createFramebuffer(displayOptions);
 }
 
 function draw() {
-  // First pass: render to the offscreen framebuffer, writing the sawtooth pattern.
-  next.begin();
-  shader(shaderProgram);
-  shaderProgram.setUniform("uNumTypes", 3);
-  shaderProgram.setUniform("uPrevious", previous);
-  shaderProgram.setUniform("uFirst", first);
-  shaderProgram.setUniform("uDisplay", false);
+  // First pass: render to the offscreen framebuffer, performing the simulation step.
+  agentsNext.begin();
+  shader(simProgram);
+  simProgram.setUniform("uNumParticles", 1000);
+  simProgram.setUniform("uNumTypes", 6);
+  simProgram.setUniform("uPrevious", agentsPrev);
+  simProgram.setUniform("uFirst", first);
+  simProgram.setUniform("uResolution", [width, height]);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
-  next.end();
+  agentsNext.end();
   first = false; // set first to false after first pass
   
-  // Second pass: render the feedback to the canvas, applying waveshaping.
-  shader(shaderProgram);
-  shaderProgram.setUniform("uPrevious", next);
-  shaderProgram.setUniform("uFirst", false);
-  shaderProgram.setUniform("uDisplay", true);
+  // Second pass: render the agents to the display framebuffer.
+  shader(displayProgram);
+  displayProgram.setUniform("uSimState", agentsNext);
+  displayProgram.setUniform("uNumTypes", 6);
+  displayProgram.setUniform("uNumParticles", 1000);
+  displayProgram.setUniform("uParticleSize", 5.0); // Adjust as needed
+  displayProgram.setUniform("uResolution", [width, height]);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   
   // Swap buffers for next frame
-  [previous, next] = [next, previous];
+  [agentsPrev, agentsNext] = [agentsNext, agentsPrev];
 }
 
 function windowResized() {

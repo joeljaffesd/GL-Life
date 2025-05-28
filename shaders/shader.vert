@@ -1,10 +1,12 @@
+#version 300 es
+
 // Vertex Shader (shader.vert)
 // This shader passes the vertex position and texture coordinates to the fragment shader.
 
-attribute vec3 aPosition;
-attribute vec2 aTexCoord;
+in vec3 aPosition;
+in vec2 aTexCoord;
 
-varying vec2 vTexCoord;
+out vec2 vTexCoord;
 
 void main() {
   vTexCoord = aTexCoord;
