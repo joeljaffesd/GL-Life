@@ -15,7 +15,7 @@
 let simProgram, displayProgram; // Shader programs for simulation and display
 let first = true;// flag to indicate the first pass of the simulation
 let agentsPrev, agentsNext, display; // framebuffers for simulation and display
-let numParticles = 1000; // Number of particles to simulate
+let numParticles = 20; // Number of particles to simulate
 let numTypes = 6; // Number of particle types
 
 // load shaders
@@ -58,19 +58,21 @@ function draw() {
   simProgram.setUniform("uResolution", [width, height]);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
-  // first = false; // set first to false after first pass
+  first = false; // set first to false after first pass
+
+  image(agentsNext, -width / 2, -height / 2, width, height);
   
   // Second pass: render the agents to the display framebuffer.
-  shader(displayProgram);
-  displayProgram.setUniform("uSimState", agentsNext);
-  displayProgram.setUniform("uNumParticles", numParticles);
-  displayProgram.setUniform("uNumTypes", numTypes);
-  displayProgram.setUniform("uParticleSize", 5.0); // Adjust as needed
-  displayProgram.setUniform("uResolution", [width, height]);
-  quad(-1, -1, 1, -1, 1, 1, -1, 1);
+  // shader(displayProgram);
+  // displayProgram.setUniform("uSimState", agentsNext);
+  // displayProgram.setUniform("uNumParticles", numParticles);
+  // displayProgram.setUniform("uNumTypes", numTypes);
+  // displayProgram.setUniform("uParticleSize", 5.0); // Adjust as needed
+  // displayProgram.setUniform("uResolution", [width, height]);
+  // quad(-1, -1, 1, -1, 1, 1, -1, 1);
   
   // Swap buffers for next frame
-  [agentsPrev, agentsNext] = [agentsNext, agentsPrev];
+  // [agentsPrev, agentsNext] = [agentsNext, agentsPrev];
 }
 
 // handle window resizing
