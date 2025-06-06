@@ -29,6 +29,8 @@ function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
   noStroke();
 
+  pixelDensity(1);
+
   const agentsOptions = {
     width: 1000,
     height: 1,
@@ -44,22 +46,49 @@ function setup() {
   agentsPrev = createFramebuffer(agentsOptions);
   agentsNext = createFramebuffer(agentsOptions);
   display = createFramebuffer(displayOptions);
+
+  noLoop();
+
+  agentsNext.begin();
+  background(0, 0, 0, 0);
+  agentsNext.end();
+  agentsPrev.begin();
+  background(0, 0, 0, 0);
+  agentsPrev.end();
+}
+
+function dump(fb) {
+  fb.loadPixels();
+  print(`Framebuffer: ${fb.width}x${fb.height}, Pixels: ${fb.pixels.length}`);
+  for (let i = 0; i < fb.pixels.length; i += 4) {
+    const x = fb.pixels[i];
+    const y = fb.pixels[i + 1];
+    const _ = fb.pixels[i + 2];
+    const t = fb.pixels[i + 3];
+    console.log(`Agent ${i/4}: (${x},${y}), Type: ${t}`);
+  }
 }
 
 // per-frame sim-step and draw
 function draw() {
-  // First pass: render to the offscreen framebuffer, performing the simulation step.
+
   agentsNext.begin();
+  background(0, 0, 0, 0); // Clear the framebuffer
   shader(simProgram);
   simProgram.setUniform("uNumParticles", numParticles);
   simProgram.setUniform("uNumTypes", numTypes);
   simProgram.setUniform("uPrevious", agentsPrev);
   simProgram.setUniform("uFirst", first);
-  simProgram.setUniform("uResolution", [width, height]);
+  simProgram.setUniform("uResolution", [agentsNext.width, agentsNext.height]);
+  //print(`Drawing to agentsNext: ${agentsNext.width}x${agentsNext.height}`);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
   first = false; // set first to false after first pass
 
+  dump(agentsNext);
+
+  clear();
+  //background(0,0,0,0);   
   image(agentsNext, -width / 2, -height / 2, width, height);
   
   // Second pass: render the agents to the display framebuffer.
@@ -72,10 +101,15 @@ function draw() {
   // quad(-1, -1, 1, -1, 1, 1, -1, 1);
   
   // Swap buffers for next frame
-  // [agentsPrev, agentsNext] = [agentsNext, agentsPrev];
+  [agentsPrev, agentsNext] = [agentsNext, agentsPrev];
 }
 
 // handle window resizing
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+}
+
+function keyPressed() {
+  
+  redraw();
 }
