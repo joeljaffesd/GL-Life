@@ -24,7 +24,8 @@ float random(vec2 st) {
 
 void main() {
   // Get the current texel index - corresponds to particle index
-  int particleIndex = int(vTexCoord.x * float(uNumParticles));
+  // (0, 999)
+  int particleIndex = int(vTexCoord.x * uResolution.x);
   
   if (uFirst) {
     // First pass: initialize with random positions
@@ -44,6 +45,8 @@ void main() {
     // Subsequent passes: just sample the previous state
     // Get previous state for this particle
     vec4 prevState = texelFetch(uPrevious, ivec2(particleIndex, 0), 0);
+    
+    prevState.x += 1.0; // "simulation"
     
     // Output unchanged state
     fragColor = prevState;
