@@ -47,8 +47,9 @@ function setup() {
   agentsNext = createFramebuffer(agentsOptions);
   display = createFramebuffer(displayOptions);
 
-  noLoop();
+  noLoop(); // manually walk thru frames for debugging 
 
+  // init framebuffers to 0
   agentsNext.begin();
   background(0, 0, 0, 0);
   agentsNext.end();
@@ -57,6 +58,7 @@ function setup() {
   agentsPrev.end();
 }
 
+// prints pixel values to console 
 function dump(fb) {
   fb.loadPixels();
   print(`Framebuffer: ${fb.width}x${fb.height}, Pixels: ${fb.pixels.length}`);
@@ -85,20 +87,18 @@ function draw() {
   agentsNext.end();
   first = false; // set first to false after first pass
 
-  dump(agentsNext);
-
-  clear();
-  //background(0,0,0,0);   
-  image(agentsNext, -width / 2, -height / 2, width, height);
+  dump(agentsNext); // print updated agent data
+  clear(); // clear 
+  image(agentsNext, -width / 2, -height / 2, width, height); // display agents 
   
   // Second pass: render the agents to the display framebuffer.
-  // shader(displayProgram);
-  // displayProgram.setUniform("uSimState", agentsNext);
-  // displayProgram.setUniform("uNumParticles", numParticles);
-  // displayProgram.setUniform("uNumTypes", numTypes);
-  // displayProgram.setUniform("uParticleSize", 5.0); // Adjust as needed
-  // displayProgram.setUniform("uResolution", [width, height]);
-  // quad(-1, -1, 1, -1, 1, 1, -1, 1);
+  shader(displayProgram);
+  displayProgram.setUniform("uSimState", agentsNext);
+  displayProgram.setUniform("uNumParticles", numParticles);
+  displayProgram.setUniform("uNumTypes", numTypes);
+  displayProgram.setUniform("uParticleSize", 5.0); // Adjust as needed
+  displayProgram.setUniform("uResolution", [width, height]);
+  quad(-1, -1, 1, -1, 1, 1, -1, 1);
   
   // Swap buffers for next frame
   [agentsPrev, agentsNext] = [agentsNext, agentsPrev];
@@ -110,6 +110,5 @@ function windowResized() {
 }
 
 function keyPressed() {
-  
   redraw();
 }

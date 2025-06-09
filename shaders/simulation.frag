@@ -46,7 +46,7 @@ void main() {
     // Get previous state for this particle
     vec4 prevState = texelFetch(uPrevious, ivec2(particleIndex, 0), 0);
     
-    prevState.x += 1.0; // "simulation"
+    prevState.x += 0.01; // "simulation"
     
     // Output unchanged state
     fragColor = prevState;
