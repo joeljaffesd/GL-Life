@@ -75,21 +75,7 @@ void main() {
 
       // Toroidal wrapping
       //======================================== 
-      if (prevPos.x >= 1.0) {
-        prevPos.x -= 1.0;
-      }
-
-      if (prevPos.x <= 0.0) {
-        prevPos.x += 1.0;
-      }
-
-      if (prevPos.y >= 1.0) {
-        prevPos.y -= 1.0;
-      }
-
-      if (prevPos.y <= 0.0) {
-        prevPos.y += 1.0;
-      }
+      prevPos = fract(prevPos);
       //======================================== 
 
       // update positons
