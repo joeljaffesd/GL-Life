@@ -61,6 +61,7 @@ void main() {
       vec4 prevState = texelFetch(uPrevious, ivec2(particleIndex, 1), 0);
       vec2 prevVel = prevState.xy;
       prevVel.y -= 0.01;
+      prevVel *= 0.3; // friction
       prevState.xy = prevVel;
       fragColor = prevState;
     } else {
@@ -69,7 +70,7 @@ void main() {
       vec2 prevVel = texelFetch(uPrevious, ivec2(particleIndex, 1), 0).xy;
     
       // sanity check sim
-      prevPos += prevVel; // "simulation"
+      prevPos.y += prevVel.y; // "simulation"
       // prevPos.y += prevVel; // "simulation"
 
 
