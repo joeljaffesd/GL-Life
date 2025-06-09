@@ -33,7 +33,7 @@ function setup() {
 
   const agentsOptions = {
     width: 1000,
-    height: 1,
+    height: 2,
     textureFiltering: LINEAR,
     format: FLOAT,
   };
