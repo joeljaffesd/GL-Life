@@ -15,7 +15,7 @@
 let simProgram, displayProgram; // Shader programs for simulation and display
 let first = true;// flag to indicate the first pass of the simulation
 let agentsPrev, agentsNext, display; // framebuffers for simulation and display
-let numParticles = 20; // Number of particles to simulate
+let numParticles = 500; // Number of particles to simulate
 let numTypes = 6; // Number of particle types
 
 // load shaders

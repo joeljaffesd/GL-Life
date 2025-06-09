@@ -46,9 +46,30 @@ void main() {
     // Get previous state for this particle
     vec4 prevState = texelFetch(uPrevious, ivec2(particleIndex, 0), 0);
     
-    prevState.x += 0.01; // "simulation"
-    
-    // Output unchanged state
+    prevState.x += random(prevState.xy); // "simulation"
+    prevState.y += random(prevState.xy); // "simulation"
+
+
+    // Toroidal wrapping
+    //======================================== 
+    if (prevState.x >= 1.0) {
+      prevState.x -= 1.0;
+    }
+
+    if (prevState.x <= 0.0) {
+      prevState.x += 1.0;
+    }
+
+    if (prevState.y >= 1.0) {
+      prevState.y -= 1.0;
+    }
+
+    if (prevState.y <= 0.0) {
+      prevState.y += 1.0;
+    }
+    //======================================== 
+
+    // Output state
     fragColor = prevState;
   }
 }
