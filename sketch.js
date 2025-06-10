@@ -58,16 +58,21 @@ function setup() {
   agentsPrev.end();
 }
 
-// prints pixel values to console 
+// prints pixel values to console (first three agents of each row)
 function dump(fb) {
   fb.loadPixels();
   print(`Framebuffer: ${fb.width}x${fb.height}, Pixels: ${fb.pixels.length}`);
-  for (let i = 0; i < fb.pixels.length; i += 4) {
-    const x = fb.pixels[i];
-    const y = fb.pixels[i + 1];
-    const _ = fb.pixels[i + 2];
-    const t = fb.pixels[i + 3];
-    console.log(`Agent ${i/4}: (${x},${y}), Type: ${t}`);
+  for (let row = 0; row < fb.height; row++) {
+    for (let col = 0; col < 3 && col < fb.width; col++) {
+      const i = (row * fb.width + col) * 4;
+      if (i < fb.pixels.length) {
+        const x = fb.pixels[i];
+        const y = fb.pixels[i + 1];
+        const _ = fb.pixels[i + 2];
+        const t = fb.pixels[i + 3];
+        console.log(`Agent ${i/4}: (${x},${y}), Type: ${t}`);
+      }
+    }
   }
 }
 
