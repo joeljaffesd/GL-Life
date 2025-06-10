@@ -33,7 +33,7 @@ void main() {
 
   if (uFirst) {
     
-    if (particleLayer == 0) {
+    if (particleLayer == 0) { // position layer
       // First pass: initialize with random positions
       // Generate a unique seed for this particle
       vec2 seed = vec2(float(particleIndex) * 0.01, float(particleIndex) * 0.02);
@@ -47,7 +47,8 @@ void main() {
       
       // Store: RG = position, B = unused, A = particle type
       fragColor = vec4(posX, posY, 0.0, particleType);
-    } else {
+    } 
+    else { // velocity layer
       // Store: RG = 0-init'd velocity, B = unused, A = unused
       fragColor = vec4(0.0);
     }
@@ -56,34 +57,73 @@ void main() {
 
   else { // if !first 
 
-    if (particleLayer == 1) {
-      // Get previous state for this particle
-      vec4 prevState = texelFetch(uPrevious, ivec2(particleIndex, 1), 0);
-      vec2 prevVel = prevState.xy;
-      prevVel.y -= 0.01;
-      prevVel *= 0.3; // friction
-      prevState.xy = prevVel;
-      fragColor = prevState;
-    } else {
-      vec4 prevState = texelFetch(uPrevious, ivec2(particleIndex, 0), 0);
-      vec2 prevPos = prevState.xy;
-      vec2 prevVel = texelFetch(uPrevious, ivec2(particleIndex, 1), 0).xy;
-    
+    // get previous state for this particle
+    vec4 prevPosState = texelFetch(uPrevious, ivec2(particleIndex, 0), 0);
+    vec4 prevVelState = texelFetch(uPrevious, ivec2(particleIndex, 1), 0);
+
+    vec2 particlePos = prevPosState.xy;
+    vec2 particleVel = prevVelState.xy;
+
+    if (particleLayer == 1) { // velocity layer
+
+      // sim step
+      vec2 direction = vec2(0.0);
+      vec2 totalForce = vec2(0.01); // test
+      vec2 acceleration = vec2(0.0);
+      float distance = 0.0;
+
+      // loop over all particles
+      for (int i = 0; i < uNumParticles; i++) {
+
+        // skip if self
+        if (i == particleIndex) {
+          continue;
+        } 
+
+        vec4 otherAgent = texelFetch(uPrevious, ivec2(i, 0), 0);
+
+        direction = otherAgent.xy;
+        direction -= particlePos;
+
+        // TODO: toroidal stuff
+
+        // ok... 
+        distance = length(direction);
+        direction = normalize(direction);
+
+        // TODO: minDistances, Radii   
+        
+      }
+
+      // integration
+      acceleration += totalForce;
+      particleVel += acceleration;
+      particleVel *= 0.3; // friction 
+
+      // output state
+      prevVelState.xy = particleVel;
+      fragColor = prevVelState;
+
+    } 
+    else { // position layer
+
       // sanity check sim
-      prevPos.y += prevVel.y; // "simulation"
+      // prevPos.y += prevVel.y; // "simulation"
       // prevPos.y += prevVel; // "simulation"
 
+      // real sim
+      particlePos += particleVel;
 
       // Toroidal wrapping
       //======================================== 
-      prevPos = fract(prevPos);
+      particlePos = fract(particlePos);
       //======================================== 
 
       // update positons
-      prevState.xy = prevPos;
+      prevPosState.xy = particlePos;
 
       // Output state
-      fragColor = prevState;
+      fragColor = prevPosState;
     }
 
   }

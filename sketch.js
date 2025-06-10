@@ -47,7 +47,7 @@ function setup() {
   agentsNext = createFramebuffer(agentsOptions);
   display = createFramebuffer(displayOptions);
 
-  noLoop(); // manually walk thru frames for debugging 
+  // noLoop(); // manually walk thru frames for debugging 
 
   // init framebuffers to 0
   agentsNext.begin();
