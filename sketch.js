@@ -31,6 +31,7 @@ function preload() {
 
 function setParameters() {
   parametersBuffer.begin();
+  // background(0, 0, 0, 0);
   simProgram.setUniform("uParameters", parametersBuffer);
   shader(parametersProgram);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
