@@ -113,14 +113,13 @@ function draw() {
   simProgram.setUniform("uFirst", first);
   simProgram.setUniform("uResolution", [agentsNext.width, agentsNext.height]);
   simProgram.setUniform("uParameters", parametersPrev);
-  //print(`Drawing to agentsNext: ${agentsNext.width}x${agentsNext.height}`);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
   first = false; // set first to false after first pass
 
-  dump(agentsNext); // print updated agent data
+  // dump(agentsNext); // print updated agent data
   clear(); // clear 
-  image(agentsNext, -width / 2, -height / 2, width, height); // display agents 
+  // image(agentsNext, -width / 2, -height / 2, width, height); // display agents 
   
   // Second pass: render the agents to the display framebuffer.
   shader(displayProgram);
