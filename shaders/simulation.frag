@@ -118,7 +118,8 @@ void main() {
 
         // R = forces, G = minDistances, B = radii, A = unused
         vec4 ruleLookup = texelFetch(uParameters, ivec2(thisType, otherType), 0);
-        float timeStep = 0.5;
+        float timeStep = 0.05;
+        // float timeStep = 0.5;
 
         // "personal space"
         if (distance < ruleLookup.g) {

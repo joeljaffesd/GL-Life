@@ -35,7 +35,7 @@ void main() {
   float scale = 1.0;
 
   float force = map(random(seed), 0.0, 1.0, scale * 0.003, scale * 0.01);
-  if (random(vTexCoord) > 0.5) { force *= -1.0; } // invert half of forces
+  if (random(vec2(seed.x, vTexCoord.x)) > 0.5) { force *= -1.0; } // invert half of forces
 
   float minDistance = map(random(seed), 0.0, 1.0, scale * 0.05, scale * 0.1);
 
