@@ -118,24 +118,25 @@ void main() {
 
         // R = forces, G = minDistances, B = radii, A = unused
         vec4 ruleLookup = texelFetch(uParameters, ivec2(thisType, otherType), 0);
+        float timeStep = 0.5;
 
         // "personal space"
         if (distance < ruleLookup.g) {
           vec2 force = direction;
           force *= abs(ruleLookup.r) * -3.0;
           force *= map(distance, 0.0, ruleLookup.g, 1.0, 0.0);
-          force *= 0.05;
+          force *= timeStep;
           totalForce += force;
         }
 
         // "primary force," can be attractive or repulsive
-        // if (distance < ruleLookup.b) {
-        //   vec2 force = direction;
-        //   force *= ruleLookup.r;
-        //   force *= map(distance, 0.0, ruleLookup.b, 1.0, 0.0);
-        //   force *= 0.05;
-        //   totalForce += force;
-        // }
+        if (distance < ruleLookup.b) {
+          vec2 force = direction;
+          force *= ruleLookup.r;
+          force *= map(distance, 0.0, ruleLookup.b, 1.0, 0.0);
+          force *= timeStep;
+          totalForce += force;
+        }
 
       }
 
