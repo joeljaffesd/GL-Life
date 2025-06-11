@@ -20,7 +20,7 @@ let numTypes = 6; // Number of particle types
 
 let minDistances, radii, forces;
 let parametersProgram;
-let parametersBuffer;
+let parametersPrev, parametersNext;
 
 // load shaders
 function preload() {
@@ -30,12 +30,13 @@ function preload() {
 }
 
 function setParameters() {
-  parametersBuffer.begin();
-  // background(0, 0, 0, 0);
-  simProgram.setUniform("uParameters", parametersBuffer);
+  parametersNext.begin();
+  background(0, 0, 0, 0);
   shader(parametersProgram);
+  parametersProgram.setUniform("uParameters", parametersPrev);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
-  parametersBuffer.end();
+  parametersNext.end();
+  [parametersPrev, parametersNext] = [parametersNext, parametersPrev];
 }
 
 // prints pixel values to console (first three agents of each row)
@@ -85,7 +86,8 @@ function setup() {
   agentsPrev = createFramebuffer(agentsOptions);
   agentsNext = createFramebuffer(agentsOptions);
   display = createFramebuffer(displayOptions);
-  parametersBuffer = createFramebuffer(parameterOptions);
+  parametersPrev = createFramebuffer(parameterOptions);
+  parametersNext = createFramebuffer(parameterOptions);
 
   // noLoop(); // manually walk thru frames for debugging 
 
@@ -110,7 +112,7 @@ function draw() {
   simProgram.setUniform("uPrevious", agentsPrev);
   simProgram.setUniform("uFirst", first);
   simProgram.setUniform("uResolution", [agentsNext.width, agentsNext.height]);
-  simProgram.setUniform("uParameters", parametersBuffer);
+  simProgram.setUniform("uParameters", parametersPrev);
   //print(`Drawing to agentsNext: ${agentsNext.width}x${agentsNext.height}`);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
