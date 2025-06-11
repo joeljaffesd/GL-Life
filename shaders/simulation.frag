@@ -22,6 +22,11 @@ float random(vec2 st) {
   return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
 }
 
+// Map function
+float map(float value, float inputMin, float inputMax, float outputMin, float outputMax) {
+  return outputMin + (outputMax - outputMin) * (value - inputMin) / (inputMax - inputMin);
+}
+
 void main() {
   // Get the current texel index - corresponds to particle index
   // (0, width - 1)
@@ -68,7 +73,7 @@ void main() {
 
       // sim step
       vec2 direction = vec2(0.0);
-      vec2 totalForce = vec2(0.01); // test
+      vec2 totalForce = vec2(0.0); // test
       vec2 acceleration = vec2(0.0);
       float distance = 0.0;
 
@@ -92,7 +97,22 @@ void main() {
         direction = normalize(direction);
 
         // TODO: minDistances, Radii   
-        
+        if (distance < 0.075) {
+          vec2 force = direction;
+          force *= abs(0.0075 * -3.0);
+          force *= map(distance, 0.0, 0.075, 1.0, 0.0);
+          force *= 0.05;
+          totalForce += force;
+        }
+
+        if (distance < 0.35) {
+          vec2 force = direction;
+          force *= 0.0075;
+          force *= map(distance, 0.0, 0.35, 0.0, 1.0);
+          force *= 0.05;
+          totalForce += force;
+        }
+
       }
 
       // integration
