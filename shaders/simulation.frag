@@ -7,8 +7,10 @@ precision mediump float;
 
 // Input uniform for previous state
 uniform sampler2D uPrevious;
+uniform sampler2D uParameters;
 uniform bool uFirst;  // Flag for first pass
 uniform int uNumParticles; // Number of particles to simulate
+uniform int uNumTypes;
 uniform vec2 uResolution; // Canvas resolution
 
 // In GLSL 300 ES, the varying keyword is replaced with in/out
@@ -73,7 +75,7 @@ void main() {
 
       // sim step
       vec2 direction = vec2(0.0);
-      vec2 totalForce = vec2(0.0); // test
+      vec2 totalForce = vec2(0.0);
       vec2 acceleration = vec2(0.0);
       float distance = 0.0;
 
@@ -85,30 +87,52 @@ void main() {
           continue;
         } 
 
+        // get otherAgent
         vec4 otherAgent = texelFetch(uPrevious, ivec2(i, 0), 0);
 
+        // calculate relation to otherAgent
         direction = otherAgent.xy;
         direction -= particlePos;
 
-        // TODO: toroidal stuff
+        // Investigate: toroidal stuff
+        if (direction.x > 0.5) {
+          direction.x -= 1.0;
+        }
+        if (direction.x < -0.5) {
+          direction.x += 1.0;
+        }
+        if (direction.y > 0.5) {
+          direction.y -= 1.0;
+        }
+        if (direction.y < -0.5) {
+          direction.y += 1.0;
+        }        
 
-        // ok... 
+        // get Euclidean distance and normalize direction 
         distance = length(direction);
         direction = normalize(direction);
 
-        // TODO: minDistances, Radii   
-        if (distance < 0.075) {
+        // compare types
+        int thisType = int(mod(prevPosState.a * float(uNumTypes), float(uNumTypes)));
+        int otherType = int(mod(otherAgent.a * float(uNumTypes), float(uNumTypes)));
+
+        // R = forces, G = minDistances, B = radii, A = unused
+        vec4 ruleLookup = texelFetch(uParameters, ivec2(thisType, otherType), 0);
+
+        // hate forces
+        if (distance < ruleLookup.g) {
           vec2 force = direction;
-          force *= abs(0.0075 * -3.0);
-          force *= map(distance, 0.0, 0.075, 1.0, 0.0);
+          force *= abs(ruleLookup.r * -3.0);
+          force *= map(distance, 0.0, ruleLookup.g, 1.0, 0.0);
           force *= 0.05;
           totalForce += force;
         }
 
-        if (distance < 0.35) {
+        // love forces
+        if (distance < ruleLookup.b) {
           vec2 force = direction;
-          force *= 0.0075;
-          force *= map(distance, 0.0, 0.35, 0.0, 1.0);
+          force *= ruleLookup.r;
+          force *= map(distance, 0.0, ruleLookup.b, 1.0, 0.0);
           force *= 0.05;
           totalForce += force;
         }
