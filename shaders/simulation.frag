@@ -7,11 +7,13 @@ precision mediump float;
 
 // Input uniform for previous state
 uniform sampler2D uPrevious;
-uniform sampler2D uParameters;
+// uniform sampler2D uParameters;
 uniform bool uFirst;  // Flag for first pass
 uniform int uNumParticles; // Number of particles to simulate
 uniform int uNumTypes;
 uniform vec2 uResolution; // Canvas resolution
+
+uniform vec4 uParameters[36]; // assuming numTypes = 6
 
 // In GLSL 300 ES, the varying keyword is replaced with in/out
 in vec2 vTexCoord;
@@ -117,9 +119,10 @@ void main() {
         int otherType = int(mod(otherAgent.a * float(uNumTypes), float(uNumTypes)));
 
         // R = forces, G = minDistances, B = radii, A = unused
-        vec4 ruleLookup = texelFetch(uParameters, ivec2(thisType, otherType), 0);
+        // vec4 ruleLookup = texelFetch(uParameters, ivec2(thisType, otherType), 0);
+        vec4 ruleLookup = uParameters[int(thisType) * int(uNumTypes) + int(otherType)];
+
         float timeStep = 0.05;
-        // float timeStep = 0.5;
 
         // "personal space"
         if (distance < ruleLookup.g) {

@@ -27,27 +27,20 @@ function preload() {
   displayProgram = loadShader('shaders/shader.vert', 'shaders/display.frag');
 }
 
-function setParameters() {
+let parameterData = []; // this will replace the framebuffer
 
-  parameterBuffer.loadPixels(); 
+function setParameters() {
+  parameterData = [];
   for (let i = 0; i < numTypes; i++) {
     for (let j = 0; j < numTypes; j++) {
-      // Access or modify pixel data for the combination of types i and j
-
       let scale = 1.0;
-      // For example:
-      let index = (i * numTypes + j) * 4; // Assuming RGBA format (4 values per pixel)
-      parameterBuffer.pixels[index] = random(scale * 0.003, scale * 0.01); // forces
-      if (random(1, 100) < 50) {
-        parameterBuffer.pixels[index] *= -1;
-      }
-      parameterBuffer.pixels[index + 1] = random(scale * 0.05, scale * 0.1);  // minDistances
-      parameterBuffer.pixels[index + 2] = random(scale * 0.15, scale * 0.5);  // radii
-      parameterBuffer.pixels[index + 3] = 1.0;        // Alpha value
+      let force = random(0.003 * scale, 0.01 * scale);
+      if (random() < 0.5) force *= -1;
+      let minDistance = random(0.05 * scale, 0.1 * scale);
+      let radius = random(0.15 * scale, 0.5 * scale);
+      parameterData.push(force, minDistance, radius, 1.0);
     }
   }
-  parameterBuffer.updatePixels(); // Don't forget to call this after modifying pixels
-  dump(parameterBuffer);
 }
 
 // prints pixel values to console (first three agents of each row)
@@ -108,11 +101,22 @@ function setup() {
   agentsPrev.begin();
   background(0, 0, 0, 0);
   agentsPrev.end();
-  setParameters()
+  // setParameters()
 }
 
 // per-frame sim-step and draw
+
+let phase = 0;
 function draw() {
+  phase++;
+  if (first) {
+    setParameters();
+  }
+  if (phase >= 60 * 3) {
+    setParameters();
+    phase = 0;
+  }
+  // setParameters();
 
   agentsNext.begin();
   background(0, 0, 0, 0); // Clear the framebuffer
@@ -122,7 +126,8 @@ function draw() {
   simProgram.setUniform("uPrevious", agentsPrev);
   simProgram.setUniform("uFirst", first);
   simProgram.setUniform("uResolution", [agentsNext.width, agentsNext.height]);
-  simProgram.setUniform("uParameters", parameterBuffer);
+  // simProgram.setUniform("uParameters", parameterBuffer);
+  simProgram.setUniform("uParameters", parameterData);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
   first = false; // set first to false after first pass
@@ -151,5 +156,5 @@ function windowResized() {
 
 function keyPressed() {
   // redraw();
-  setParameters();
+  // setParameters();
 }
