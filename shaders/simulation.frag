@@ -1,18 +1,16 @@
 #version 300 es
 // Simulation Fragment Shader (simulation.frag)
 // On first pass: Initialize particles with random positions
-// On subsequent passes: Maintain those positions (sample and hold)
+// On subsequent passes: simulation step
 
 precision mediump float;
 
-// Input uniform for previous state
-uniform sampler2D uPrevious;
-// uniform sampler2D uParameters;
+
+uniform sampler2D uPrevious; // uniform for previous state
 uniform bool uFirst;  // Flag for first pass
 uniform int uNumParticles; // Number of particles to simulate
 uniform int uNumTypes;
 uniform vec2 uResolution; // Canvas resolution
-
 uniform vec4 uParameters[36]; // assuming numTypes = 6
 
 // In GLSL 300 ES, the varying keyword is replaced with in/out

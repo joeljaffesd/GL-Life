@@ -3,8 +3,7 @@
 
 precision mediump float;
 
-// Simulation state texture (1000x1 particles)
-uniform sampler2D uSimState;
+uniform sampler2D uSimState; // Simulation state texture
 uniform vec2 uResolution;  // Canvas resolution
 uniform float uParticleSize; // Size of particles (radius)
 uniform int uNumParticles; // Number of particles
@@ -17,6 +16,7 @@ in vec2 vTexCoord;
 out vec4 fragColor;
 
 void main() {
+  
   // Start with black background
   fragColor = vec4(0.0, 0.0, 0.0, 1.0);
   
@@ -62,6 +62,4 @@ void main() {
     }
   }
   
-  // gl_FragColor is not used in GLSL 300 ES
-  // We've already been writing to fragColor
 }

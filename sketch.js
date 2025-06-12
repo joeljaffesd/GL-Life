@@ -17,9 +17,8 @@ let first = true;// flag to indicate the first pass of the simulation
 let agentsPrev, agentsNext, display; // framebuffers for simulation and display
 let numParticles = 500; // Number of particles to simulate
 let numTypes = 6; // Number of particle types
-
-let minDistances, radii, forces;
-let parameterBuffer;
+let parameterData = [];
+let phase = 0;
 
 // load shaders
 function preload() {
@@ -27,8 +26,7 @@ function preload() {
   displayProgram = loadShader('shaders/shader.vert', 'shaders/display.frag');
 }
 
-let parameterData = []; // this will replace the framebuffer
-
+// resets relationships between particle types
 function setParameters() {
   parameterData = [];
   for (let i = 0; i < numTypes; i++) {
@@ -80,17 +78,9 @@ function setup() {
     format: FLOAT,
   };
 
-  const parameterOptions = {
-    width: numTypes,
-    height: numTypes,
-    textureFiltering: LINEAR,
-    format: FLOAT,
-  };
-
   agentsPrev = createFramebuffer(agentsOptions);
   agentsNext = createFramebuffer(agentsOptions);
   display = createFramebuffer(displayOptions);
-  parameterBuffer = createFramebuffer(parameterOptions);
 
   // noLoop(); // manually walk thru frames for debugging 
 
@@ -101,23 +91,20 @@ function setup() {
   agentsPrev.begin();
   background(0, 0, 0, 0);
   agentsPrev.end();
-  // setParameters()
+  setParameters() // init params
 }
 
 // per-frame sim-step and draw
-
-let phase = 0;
 function draw() {
+
+  // reset sim every 7 seconds
   phase++;
-  if (first) {
-    setParameters();
-  }
-  if (phase >= 60 * 3) {
+  if (phase >= 60 * 7) {
     setParameters();
     phase = 0;
   }
-  // setParameters();
 
+  // simulation step
   agentsNext.begin();
   background(0, 0, 0, 0); // Clear the framebuffer
   shader(simProgram);
@@ -126,17 +113,17 @@ function draw() {
   simProgram.setUniform("uPrevious", agentsPrev);
   simProgram.setUniform("uFirst", first);
   simProgram.setUniform("uResolution", [agentsNext.width, agentsNext.height]);
-  // simProgram.setUniform("uParameters", parameterBuffer);
   simProgram.setUniform("uParameters", parameterData);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
   first = false; // set first to false after first pass
 
+  // debug block
   // dump(agentsNext); // print updated agent data
-  clear(); // clear 
+  // clear(); // clear 
   // image(agentsNext, -width / 2, -height / 2, width, height); // display agents 
   
-  // Second pass: render the agents to the display framebuffer.
+  // display step
   shader(displayProgram);
   displayProgram.setUniform("uSimState", agentsNext);
   displayProgram.setUniform("uNumParticles", numParticles);
@@ -154,7 +141,7 @@ function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
 
+// if walking thru frames manually to debug
 function keyPressed() {
   // redraw();
-  // setParameters();
 }
