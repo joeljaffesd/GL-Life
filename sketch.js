@@ -19,24 +19,35 @@ let numParticles = 500; // Number of particles to simulate
 let numTypes = 6; // Number of particle types
 
 let minDistances, radii, forces;
-let parametersProgram;
-let parametersPrev, parametersNext;
+let parameterBuffer;
 
 // load shaders
 function preload() {
   simProgram = loadShader('shaders/shader.vert', 'shaders/simulation.frag');
   displayProgram = loadShader('shaders/shader.vert', 'shaders/display.frag');
-  parametersProgram = loadShader('shaders/shader.vert', 'shaders/parameters.frag');
 }
 
 function setParameters() {
-  parametersNext.begin();
-  background(0, 0, 0, 0);
-  shader(parametersProgram);
-  parametersProgram.setUniform("uParameters", parametersPrev);
-  quad(-1, -1, 1, -1, 1, 1, -1, 1);
-  parametersNext.end();
-  [parametersPrev, parametersNext] = [parametersNext, parametersPrev];
+
+  parameterBuffer.loadPixels(); 
+  for (let i = 0; i < numTypes; i++) {
+    for (let j = 0; j < numTypes; j++) {
+      // Access or modify pixel data for the combination of types i and j
+
+      let scale = 1.0;
+      // For example:
+      let index = (i * numTypes + j) * 4; // Assuming RGBA format (4 values per pixel)
+      parameterBuffer.pixels[index] = random(scale * 0.003, scale * 0.01); // forces
+      if (random(1, 100) < 50) {
+        parameterBuffer.pixels[index] *= -1;
+      }
+      parameterBuffer.pixels[index + 1] = random(scale * 0.05, scale * 0.1);  // minDistances
+      parameterBuffer.pixels[index + 2] = random(scale * 0.15, scale * 0.5);  // radii
+      parameterBuffer.pixels[index + 3] = 1.0;        // Alpha value
+    }
+  }
+  parameterBuffer.updatePixels(); // Don't forget to call this after modifying pixels
+  dump(parameterBuffer);
 }
 
 // prints pixel values to console (first three agents of each row)
@@ -86,8 +97,7 @@ function setup() {
   agentsPrev = createFramebuffer(agentsOptions);
   agentsNext = createFramebuffer(agentsOptions);
   display = createFramebuffer(displayOptions);
-  parametersPrev = createFramebuffer(parameterOptions);
-  parametersNext = createFramebuffer(parameterOptions);
+  parameterBuffer = createFramebuffer(parameterOptions);
 
   // noLoop(); // manually walk thru frames for debugging 
 
@@ -112,7 +122,7 @@ function draw() {
   simProgram.setUniform("uPrevious", agentsPrev);
   simProgram.setUniform("uFirst", first);
   simProgram.setUniform("uResolution", [agentsNext.width, agentsNext.height]);
-  simProgram.setUniform("uParameters", parametersPrev);
+  simProgram.setUniform("uParameters", parameterBuffer);
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
   first = false; // set first to false after first pass
