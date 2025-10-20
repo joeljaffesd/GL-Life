@@ -9,6 +9,11 @@ uniform float uParticleSize; // Size of particles (radius)
 uniform int uNumParticles; // Number of particles
 uniform int uNumTypes; // Number of particle types (e.g., 6)
 
+// Stroke uniforms
+uniform int uNumStrokes; // Number of stroke particles
+uniform vec4 uStrokePositions[200]; // Stroke particle positions
+uniform float uStrokeTypes[200]; // Stroke particle types
+
 // In GLSL 300 ES, the varying keyword is replaced with in/out
 in vec2 vTexCoord;
 
@@ -58,6 +63,49 @@ void main() {
         fragColor = vec4(mix(fragColor.rgb, color, alpha), 1.0);
       } else {
         fragColor = vec4(color, 1.0);
+      }
+    }
+  }
+  
+  // Loop through stroke particles
+  for(int i = 0; i < uNumStrokes; i++) {
+    
+    // Get stroke particle position
+    vec2 strokePos = uStrokePositions[i].xy;
+    
+    // Skip invalid stroke particles
+    if (strokePos.x < 0.0 || strokePos.y < 0.0) {
+      continue;
+    }
+    
+    float strokeType = uStrokeTypes[i];
+    
+    // Calculate distance from current pixel to stroke particle
+    float distance = length((pixelPos - strokePos) * uResolution);
+    
+    // Stroke particles are slightly larger and more opaque
+    float strokeSize = uParticleSize * 1.5;
+    
+    if(distance < strokeSize) {
+      // Choose color based on stroke type
+      vec3 color;
+      
+      int type = int(mod(strokeType * float(uNumTypes), float(uNumTypes)));
+      
+      if(type == 0) color = vec3(1.0, 0.3, 0.3); // Red
+      else if(type == 1) color = vec3(0.3, 1.0, 0.3); // Green
+      else if(type == 2) color = vec3(0.3, 0.3, 1.0); // Blue
+      else if(type == 3) color = vec3(1.0, 1.0, 0.3); // Yellow
+      else if(type == 4) color = vec3(1.0, 0.3, 1.0); // Magenta
+      else color = vec3(0.3, 1.0, 1.0); // Cyan
+      
+      // Make stroke particles more prominent
+      float edge = strokeSize - 1.0;
+      if(distance > edge) {
+        float alpha = 1.0 - (distance - edge);
+        fragColor = vec4(mix(fragColor.rgb, color, alpha * 0.8), 1.0);
+      } else {
+        fragColor = vec4(mix(fragColor.rgb, color, 0.8), 1.0);
       }
     }
   }

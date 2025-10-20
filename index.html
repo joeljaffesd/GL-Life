@@ -14,6 +14,31 @@
   </head>
 
   <body>
+    <div id="controls">
+      <div class="control-group">
+        <label for="drawMode">Draw Mode:</label>
+        <input type="checkbox" id="drawMode" />
+      </div>
+      <div class="control-group">
+        <label for="strokeWidth">Stroke Width:</label>
+        <input type="range" id="strokeWidth" min="5" max="50" value="15" />
+        <span id="strokeWidthValue">15</span>
+      </div>
+      <div class="control-group">
+        <label>Stroke Color:</label>
+        <div class="color-buttons">
+          <button class="color-btn" data-type="0" style="background-color: #ff3333;"></button>
+          <button class="color-btn" data-type="1" style="background-color: #33ff33;"></button>
+          <button class="color-btn" data-type="2" style="background-color: #3333ff;"></button>
+          <button class="color-btn" data-type="3" style="background-color: #ffff33;"></button>
+          <button class="color-btn" data-type="4" style="background-color: #ff33ff;"></button>
+          <button class="color-btn" data-type="5" style="background-color: #33ffff;"></button>
+        </div>
+      </div>
+      <div class="control-group">
+        <button id="clearStrokes">Clear Strokes</button>
+      </div>
+    </div>
     <script src="sketch.js"></script>
   </body>
 </html>

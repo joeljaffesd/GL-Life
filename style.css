@@ -1,8 +1,83 @@
 html, body {
   margin: 0;
   padding: 0;
+  font-family: Arial, sans-serif;
 }
 
 canvas {
   display: block;
+}
+
+#controls {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  z-index: 1000;
+  min-width: 200px;
+}
+
+.control-group {
+  margin-bottom: 15px;
+}
+
+.control-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.control-group input[type="range"] {
+  width: 100%;
+  margin-bottom: 5px;
+}
+
+.control-group input[type="checkbox"] {
+  margin-left: 10px;
+}
+
+#strokeWidthValue {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.color-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.color-btn {
+  width: 25px;
+  height: 25px;
+  border: 2px solid #666;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.color-btn:hover {
+  border-color: #fff;
+}
+
+.color-btn.selected {
+  border-color: #fff;
+  border-width: 3px;
+}
+
+#clearStrokes {
+  background: #ff4444;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#clearStrokes:hover {
+  background: #ff6666;
 }

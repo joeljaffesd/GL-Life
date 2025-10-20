@@ -13,6 +13,11 @@ uniform int uNumTypes;
 uniform vec2 uResolution; // Canvas resolution
 uniform vec4 uParameters[36]; // assuming numTypes = 6
 
+// Stroke uniforms
+uniform int uNumStrokes; // Number of stroke particles
+uniform vec4 uStrokePositions[200]; // Stroke particle positions (x,y,unused,unused)
+uniform float uStrokeTypes[200]; // Stroke particle types
+
 // In GLSL 300 ES, the varying keyword is replaced with in/out
 in vec2 vTexCoord;
 
@@ -140,6 +145,68 @@ void main() {
           totalForce += force;
         }
 
+      }
+
+      // loop over stroke particles
+      for (int i = 0; i < uNumStrokes; i++) {
+        
+        // get stroke particle position
+        vec2 strokePos = uStrokePositions[i].xy;
+        
+        // skip invalid stroke particles
+        if (strokePos.x < 0.0 || strokePos.y < 0.0) {
+          continue;
+        }
+
+        // calculate relation to stroke particle
+        direction = strokePos - particlePos;
+
+        // Toroidal wrapping
+        if (direction.x > 0.5) {
+          direction.x -= 1.0;
+        }
+        if (direction.x < -0.5) {
+          direction.x += 1.0;
+        }
+        if (direction.y > 0.5) {
+          direction.y -= 1.0;
+        }
+        if (direction.y < -0.5) {
+          direction.y += 1.0;
+        }        
+
+        // get Euclidean distance and normalize direction 
+        distance = length(direction);
+        if (distance > 0.0) {
+          direction = normalize(direction);
+        }
+
+        // compare types
+        int thisType = int(mod(prevPosState.a * float(uNumTypes), float(uNumTypes)));
+        int strokeType = int(mod(uStrokeTypes[i] * float(uNumTypes), float(uNumTypes)));
+
+        // Use same parameter lookup for stroke interactions
+        vec4 ruleLookup = uParameters[int(thisType) * int(uNumTypes) + int(strokeType)];
+
+        float timeStep = 0.05;
+
+        // "personal space" - stroke particles are static, so only affect moving particles
+        if (distance < ruleLookup.g && distance > 0.0) {
+          vec2 force = direction;
+          force *= abs(ruleLookup.r) * -3.0;
+          force *= map(distance, 0.0, ruleLookup.g, 1.0, 0.0);
+          force *= timeStep;
+          totalForce += force;
+        }
+
+        // "primary force," can be attractive or repulsive
+        if (distance < ruleLookup.b && distance > 0.0) {
+          vec2 force = direction;
+          force *= ruleLookup.r;
+          force *= map(distance, 0.0, ruleLookup.b, 1.0, 0.0);
+          force *= timeStep;
+          totalForce += force;
+        }
       }
 
       // integration
