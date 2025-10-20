@@ -26,7 +26,15 @@ let selectedColor = 0;
 let isDrawing = false;
 let strokes = []; // Array to store all stroke data
 let currentStroke = []; // Current stroke being drawn
-let maxStrokeParticles = 1000; // Maximum number of stroke particles
+let maxStrokeParticles = 10000; // Increased to 10k with texture storage
+
+// Stroke texture system
+let strokeTexture; // Framebuffer for stroke particles
+let strokeTextureSize = 100; // 100x100 = 10k particles (adjustable)
+let strokeCount = 0; // Current number of stroke particles
+let strokeTextureNeedsUpdate = false; // Flag to track when texture needs rebuilding
+let lastStrokeCount = 0; // Track changes to optimize updates
+let textureUpdateTimer = 0; // Debounce texture updates
 
 // Framerate counter
 let framerateDelta = 0;
@@ -94,6 +102,15 @@ function setup() {
   agentsNext = createFramebuffer(agentsOptions);
   display = createFramebuffer(displayOptions);
 
+  // Create stroke texture for up to 10k stroke particles
+  const strokeOptions = {
+    width: strokeTextureSize,
+    height: strokeTextureSize,
+    textureFiltering: NEAREST, // No interpolation needed for discrete particles
+    format: FLOAT,
+  };
+  strokeTexture = createFramebuffer(strokeOptions);
+
   // Setup UI controls
   setupControls();
 
@@ -106,6 +123,12 @@ function setup() {
   agentsPrev.begin();
   background(0, 0, 0, 0);
   agentsPrev.end();
+  
+  // Initialize stroke texture
+  strokeTexture.begin();
+  background(0, 0, 0, 0);
+  strokeTexture.end();
+  
   setParameters() // init params
 }
 
@@ -121,10 +144,15 @@ function draw() {
     phase = 0;
   }
 
-  // Prepare stroke data for shader - always process existing strokes
-  let strokeData = { count: 0, positions: [], types: [] };
-  if (strokes.length > 0 || currentStroke.length > 0) {
-    strokeData = prepareStrokeData();
+  // Update stroke texture only when needed and debounced
+  if (strokeTextureNeedsUpdate || strokes.length !== lastStrokeCount) {
+    // Debounce updates to avoid excessive texture rebuilding
+    if (millis() - textureUpdateTimer > 100) { // Update at most every 100ms
+      updateStrokeTexture();
+      strokeTextureNeedsUpdate = false;
+      lastStrokeCount = strokes.length;
+      textureUpdateTimer = millis();
+    }
   }
 
   // simulation step
@@ -137,13 +165,9 @@ function draw() {
   simProgram.setUniform("uFirst", first);
   simProgram.setUniform("uResolution", [agentsNext.width, agentsNext.height]);
   simProgram.setUniform("uParameters", parameterData);
-  simProgram.setUniform("uNumStrokes", strokeData.count);
-  
-  // Only set stroke uniforms if we have stroke data
-  if (strokeData.count > 0) {
-    simProgram.setUniform("uStrokePositions", strokeData.positions);
-    simProgram.setUniform("uStrokeTypes", strokeData.types);
-  }
+  simProgram.setUniform("uNumStrokes", strokeCount);
+  simProgram.setUniform("uStrokeTexture", strokeTexture);
+  simProgram.setUniform("uStrokeTextureSize", strokeTextureSize);
   
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
@@ -161,13 +185,9 @@ function draw() {
   displayProgram.setUniform("uNumTypes", numTypes);
   displayProgram.setUniform("uParticleSize", 5.0); // Adjust as needed
   displayProgram.setUniform("uResolution", [width, height]);
-  displayProgram.setUniform("uNumStrokes", strokeData.count);
-  
-  // Only set stroke uniforms if we have stroke data
-  if (strokeData.count > 0) {
-    displayProgram.setUniform("uStrokePositions", strokeData.positions);
-    displayProgram.setUniform("uStrokeTypes", strokeData.types);
-  }
+  displayProgram.setUniform("uNumStrokes", strokeCount);
+  displayProgram.setUniform("uStrokeTexture", strokeTexture);
+  displayProgram.setUniform("uStrokeTextureSize", strokeTextureSize);
   
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   
@@ -175,42 +195,58 @@ function draw() {
   [agentsPrev, agentsNext] = [agentsNext, agentsPrev];
 }
 
-// Prepare stroke data for shaders
-function prepareStrokeData() {
-  const maxStrokes = 200; // Reduced for better performance
+// Update stroke texture with current stroke data (optimized)
+function updateStrokeTexture() {
+  // Only use permanent strokes for texture (not current stroke being drawn)
+  // Current stroke preview will be handled separately to avoid per-frame texture updates
+  const maxStrokeCapacity = strokeTextureSize * strokeTextureSize;
+  const strokesToUse = strokes.slice(-maxStrokeCapacity);
+  strokeCount = strokesToUse.length;
   
-  // Combine permanent strokes with current stroke being drawn
-  let allStrokes = [...strokes];
-  if (currentStroke.length > 0) {
-    // Add current stroke being drawn for real-time feedback
-    const currentStrokeParticles = interpolateStroke(currentStroke, strokeWidth);
-    allStrokes = [...allStrokes, ...currentStrokeParticles];
+  strokeTexture.begin();
+  background(0, 0, 0, 0); // Clear existing strokes
+  
+  if (strokeCount === 0) {
+    strokeTexture.end();
+    return;
   }
   
-  const strokesToUse = allStrokes.slice(-maxStrokes); // Use most recent strokes
+  // Optimized rendering using point() for better performance
+  push();
   
-  const positions = [];
-  const types = [];
+  // Set up coordinate system for texture writing
+  camera(0, 0, 1, 0, 0, 0, 0, 1, 0);
+  ortho(-1, 1, -1, 1, -1, 1);
   
-  for (let stroke of strokesToUse) {
-    positions.push(stroke.x, stroke.y, 0.0, 0.0); // x, y, unused, unused
-    types.push(stroke.type / numTypes); // Normalize type to [0,1]
+  // Use point rendering for maximum efficiency
+  strokeWeight(1);
+  
+  // Render all points efficiently
+  for (let i = 0; i < strokeCount; i++) {
+    const strokeParticle = strokesToUse[i];
+    
+    // Map linear index to 2D texture coordinates  
+    const texX = i % strokeTextureSize;
+    const texY = Math.floor(i / strokeTextureSize);
+    
+    // Convert to normalized device coordinates [-1, 1]
+    const ndcX = (texX / strokeTextureSize) * 2.0 - 1.0 + (1.0 / strokeTextureSize);
+    const ndcY = (texY / strokeTextureSize) * 2.0 - 1.0 + (1.0 / strokeTextureSize);
+    
+    // Encode stroke data in stroke color
+    const r = Math.round(strokeParticle.x * 255);
+    const g = Math.round(strokeParticle.y * 255);  
+    const b = Math.round((strokeParticle.type / numTypes) * 255);
+    const a = 255;
+    
+    stroke(r, g, b, a);
+    point(ndcX, ndcY);
   }
   
-  // Ensure we always send the same amount of data
-  const actualLength = strokesToUse.length;
-  while (positions.length < maxStrokes * 4) {
-    positions.push(-1.0, -1.0, 0.0, 0.0); // Invalid positions
-  }
-  while (types.length < maxStrokes) {
-    types.push(-1.0); // Invalid type
-  }
+  pop();
+  strokeTexture.end();
   
-  return {
-    positions: positions.slice(0, maxStrokes * 4),
-    types: types.slice(0, maxStrokes),
-    count: actualLength
-  };
+  console.log(`Updated stroke texture with ${strokeCount} particles`);
 }
 
 // handle window resizing
@@ -256,6 +292,8 @@ function setupControls() {
   document.getElementById('clearStrokes').addEventListener('click', () => {
     strokes = [];
     currentStroke = [];
+    strokeTextureNeedsUpdate = true; // Trigger texture update
+    console.log('All strokes cleared');
   });
 }
 
@@ -318,7 +356,10 @@ function mouseReleased() {
       strokes = strokes.slice(strokes.length - maxStrokeParticles);
     }
     
-    console.log(`Added stroke with ${interpolatedStroke.length} particles. Total: ${strokes.length}`);
+    // Mark texture for update since we added new strokes
+    strokeTextureNeedsUpdate = true;
+    
+    console.log(`Added stroke with ${interpolatedStroke.length} particles. Total: ${strokes.length}. Texture capacity: ${strokeTextureSize * strokeTextureSize}`);
     
     currentStroke = [];
     isDrawing = false;

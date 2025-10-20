@@ -9,10 +9,10 @@ uniform float uParticleSize; // Size of particles (radius)
 uniform int uNumParticles; // Number of particles
 uniform int uNumTypes; // Number of particle types (e.g., 6)
 
-// Stroke uniforms
+// Stroke uniforms - now using texture instead of arrays
 uniform int uNumStrokes; // Number of stroke particles
-uniform vec4 uStrokePositions[200]; // Stroke particle positions
-uniform float uStrokeTypes[200]; // Stroke particle types
+uniform sampler2D uStrokeTexture; // Stroke particle data texture
+uniform float uStrokeTextureSize; // Size of stroke texture (e.g., 100 for 100x100)
 
 // In GLSL 300 ES, the varying keyword is replaced with in/out
 in vec2 vTexCoord;
@@ -67,18 +67,27 @@ void main() {
     }
   }
   
-  // Loop through stroke particles
-  for(int i = 0; i < uNumStrokes && i < 200; i++) {
+  // Loop through stroke particles using texture sampling
+  for(int i = 0; i < uNumStrokes && i < int(uStrokeTextureSize * uStrokeTextureSize); i++) {
     
-    // Get stroke particle position
-    vec2 strokePos = uStrokePositions[i].xy;
+    // Calculate texture coordinates for this stroke particle
+    float texX = (float(i % int(uStrokeTextureSize)) + 0.5) / uStrokeTextureSize;
+    float texY = (float(i / int(uStrokeTextureSize)) + 0.5) / uStrokeTextureSize;
+    vec2 strokeTexCoord = vec2(texX, texY);
     
-    // Skip invalid stroke particles
-    if (strokePos.x < 0.0 || strokePos.y < 0.0) {
+    // Sample stroke data from texture
+    vec4 strokeData = texture(uStrokeTexture, strokeTexCoord);
+    
+    // Extract and decode stroke information from texture
+    // Values are encoded as 0-255 in texture, need to convert back to 0-1
+    vec2 strokePos = strokeData.rg; // Already normalized by texture sampling
+    float strokeType = strokeData.b; // Already normalized by texture sampling
+    float validFlag = strokeData.a;  // Already normalized by texture sampling
+    
+    // Skip invalid stroke particles (alpha < 0.5 means invalid)
+    if (validFlag < 0.5) {
       continue;
     }
-    
-    float strokeType = uStrokeTypes[i];
     
     // Calculate distance from current pixel to stroke particle
     float distance = length((pixelPos - strokePos) * uResolution);
