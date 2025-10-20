@@ -144,13 +144,15 @@ function draw() {
     phase = 0;
   }
 
-  // Update stroke texture only when needed and debounced
-  if (strokeTextureNeedsUpdate || strokes.length !== lastStrokeCount) {
-    // Debounce updates to avoid excessive texture rebuilding
-    if (millis() - textureUpdateTimer > 100) { // Update at most every 100ms
+  // Update stroke texture when needed (includes current stroke with Douglas-Peucker)
+  const totalStrokeLength = strokes.length + (currentStroke.length > 2 ? douglasPeucker(currentStroke, 0.005).length : currentStroke.length);
+  if (strokeTextureNeedsUpdate || totalStrokeLength !== lastStrokeCount || currentStroke.length > 0) {
+    // Update more frequently during drawing for real-time feedback
+    const updateInterval = isDrawing ? 50 : 100; // 50ms during drawing, 100ms otherwise
+    if (millis() - textureUpdateTimer > updateInterval) {
       updateStrokeTexture();
       strokeTextureNeedsUpdate = false;
-      lastStrokeCount = strokes.length;
+      lastStrokeCount = totalStrokeLength;
       textureUpdateTimer = millis();
     }
   }
@@ -197,10 +199,35 @@ function draw() {
 
 // Update stroke texture with current stroke data (optimized)
 function updateStrokeTexture() {
-  // Only use permanent strokes for texture (not current stroke being drawn)
-  // Current stroke preview will be handled separately to avoid per-frame texture updates
+  // Combine permanent strokes with current stroke being drawn
+  let allStrokes = [...strokes];
+  
+  // Apply Douglas-Peucker to current stroke for real-time preview
+  if (currentStroke.length > 2) {
+    const epsilon = 0.005;
+    const simplifiedCurrent = douglasPeucker(currentStroke, epsilon);
+    
+    // Convert simplified points to particles without full interpolation
+    const currentParticles = simplifiedCurrent.map(point => ({
+      x: point.x,
+      y: point.y,
+      type: point.type,
+      isMainPoint: true
+    }));
+    
+    allStrokes = [...allStrokes, ...currentParticles];
+  } else if (currentStroke.length > 0) {
+    // For short strokes, just add the points directly
+    allStrokes = [...allStrokes, ...currentStroke.map(point => ({
+      x: point.x,
+      y: point.y,
+      type: point.type,
+      isMainPoint: true
+    }))];
+  }
+  
   const maxStrokeCapacity = strokeTextureSize * strokeTextureSize;
-  const strokesToUse = strokes.slice(-maxStrokeCapacity);
+  const strokesToUse = allStrokes.slice(-maxStrokeCapacity);
   strokeCount = strokesToUse.length;
   
   strokeTexture.begin();
@@ -371,101 +398,109 @@ function interpolateStroke(stroke, width) {
   if (stroke.length < 1) return [];
   if (stroke.length === 1) return [stroke[0]]; // Single point
   
-  const particles = [];
-  const baseParticlesPerUnit = Math.max(1, width / 8); // Base density of particles
+  // Apply Douglas-Peucker algorithm to reduce points before particle generation
+  const epsilon = 0.005; // Tolerance for line simplification (adjustable)
+  const simplifiedStroke = douglasPeucker(stroke, epsilon);
   
-  for (let i = 0; i < stroke.length - 1; i++) {
-    const p1 = stroke[i];
-    const p2 = stroke[i + 1];
-    const distance = dist(p1.x, p1.y, p2.x, p2.y);
-    const numParticles = Math.max(1, Math.floor(distance * baseParticlesPerUnit * 1000));
+  console.log(`Douglas-Peucker: Reduced stroke from ${stroke.length} to ${simplifiedStroke.length} points`);
+  
+  const particles = [];
+  
+  // Generate particles only for the simplified stroke points
+  for (let i = 0; i < simplifiedStroke.length; i++) {
+    const point = simplifiedStroke[i];
     
-    for (let j = 0; j < numParticles; j++) {
-      const t = j / numParticles;
-      const x = lerp(p1.x, p2.x, t);
-      const y = lerp(p1.y, p2.y, t);
+    // Add the main stroke point
+    particles.push({
+      x: point.x,
+      y: point.y,
+      type: point.type,
+      isMainPoint: true
+    });
+    
+    // Add thickness particles around each simplified point (fewer than before)
+    const numThicknessParticles = Math.max(2, Math.floor(width / 15)); // Reduced density
+    for (let k = 0; k < numThicknessParticles; k++) {
+      const angle = (k / numThicknessParticles) * TWO_PI + random(-0.3, 0.3);
+      const maxRadius = width * 0.0003; // Smaller radius since we have fewer main points
+      const radius = random(maxRadius * 0.5, maxRadius);
+      const offsetX = cos(angle) * radius;
+      const offsetY = sin(angle) * radius;
       
-      // Add multiple particles in a circle for thickness
-      const numThicknessParticles = Math.max(1, Math.floor(width / 10));
-      for (let k = 0; k < numThicknessParticles; k++) {
-        const angle = (k / numThicknessParticles) * TWO_PI + random(-0.5, 0.5);
-        const maxRadius = width * 0.0005; // Scale radius based on stroke width
-        const radius = random(0, maxRadius);
-        const offsetX = cos(angle) * radius;
-        const offsetY = sin(angle) * radius;
-        
-        particles.push({
-          x: constrain(x + offsetX, 0, 1),
-          y: constrain(y + offsetY, 0, 1),
-          type: p1.type
-        });
-      }
+      particles.push({
+        x: constrain(point.x + offsetX, 0, 1),
+        y: constrain(point.y + offsetY, 0, 1),
+        type: point.type,
+        isMainPoint: false
+      });
     }
   }
   
   return particles;
 }
 
-// Draw preview of current stroke being drawn
-function drawStrokePreview() {
-  // Set stroke properties based on selected color
-  const colors = [
-    [255, 51, 51],   // Red
-    [51, 255, 51],   // Green
-    [51, 51, 255],   // Blue
-    [255, 255, 51],  // Yellow
-    [255, 51, 255],  // Magenta
-    [51, 255, 255]   // Cyan
-  ];
+// Douglas-Peucker algorithm for line simplification
+function douglasPeucker(points, epsilon) {
+  if (points.length <= 2) return points;
   
-  const color = colors[selectedColor];
-  stroke(color[0], color[1], color[2], 200); // Semi-transparent
-  strokeWeight(strokeWidth * 0.5); // Preview at half width for clarity
-  noFill();
+  // Find the point with the maximum distance from the line between first and last points
+  let maxDistance = 0;
+  let maxIndex = 0;
+  const firstPoint = points[0];
+  const lastPoint = points[points.length - 1];
   
-  // Draw the stroke path
-  if (currentStroke.length > 1) {
-    beginShape();
-    for (let point of currentStroke) {
-      // Convert back from normalized coordinates to screen coordinates
-      // Remember to flip Y coordinate back
-      const screenX = point.x * width - width/2;
-      const screenY = (1.0 - point.y) * height - height/2;
-      vertex(screenX, screenY);
+  for (let i = 1; i < points.length - 1; i++) {
+    const distance = perpendicularDistance(points[i], firstPoint, lastPoint);
+    if (distance > maxDistance) {
+      maxDistance = distance;
+      maxIndex = i;
     }
-    endShape();
   }
   
-  // Reset drawing state
-  noStroke();
+  // If the maximum distance is greater than epsilon, recursively simplify
+  if (maxDistance > epsilon) {
+    // Recursive call for the two segments
+    const leftSegment = douglasPeucker(points.slice(0, maxIndex + 1), epsilon);
+    const rightSegment = douglasPeucker(points.slice(maxIndex), epsilon);
+    
+    // Combine results (remove duplicate point at the junction)
+    return leftSegment.slice(0, -1).concat(rightSegment);
+  } else {
+    // If no point is far enough, return just the endpoints
+    return [firstPoint, lastPoint];
+  }
 }
 
-// Draw cursor indicator when in draw mode
-function drawCursorIndicator() {
-  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
-    // Set stroke properties based on selected color
-    const colors = [
-      [255, 51, 51],   // Red
-      [51, 255, 51],   // Green
-      [51, 51, 255],   // Blue
-      [255, 255, 51],  // Yellow
-      [255, 51, 255],  // Magenta
-      [51, 255, 255]   // Cyan
-    ];
-    
-    const color = colors[selectedColor];
-    stroke(color[0], color[1], color[2], 150);
-    strokeWeight(2);
-    noFill();
-    
-    // Draw circle at cursor position (converted to WebGL coordinates)
-    const cursorX = mouseX - width/2;
-    const cursorY = mouseY - height/2;
-    circle(cursorX, cursorY, strokeWidth);
-    
-    // Reset drawing state
-    noStroke();
+// Calculate perpendicular distance from a point to a line
+function perpendicularDistance(point, lineStart, lineEnd) {
+  const A = lineEnd.x - lineStart.x;
+  const B = lineEnd.y - lineStart.y;
+  const C = point.x - lineStart.x;
+  const D = point.y - lineStart.y;
+  
+  const dot = A * C + B * D;
+  const lenSq = A * A + B * B;
+  
+  if (lenSq === 0) {
+    // Line start and end are the same point
+    return dist(point.x, point.y, lineStart.x, lineStart.y);
   }
+  
+  const param = dot / lenSq;
+  let closestX, closestY;
+  
+  if (param < 0) {
+    closestX = lineStart.x;
+    closestY = lineStart.y;
+  } else if (param > 1) {
+    closestX = lineEnd.x;
+    closestY = lineEnd.y;
+  } else {
+    closestX = lineStart.x + param * A;
+    closestY = lineStart.y + param * B;
+  }
+  
+  return dist(point.x, point.y, closestX, closestY);
 }
 
 // Update framerate display
