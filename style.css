@@ -8,6 +8,10 @@ canvas {
   display: block;
 }
 
+canvas.draw-mode {
+  cursor: crosshair;
+}
+
 #controls {
   position: fixed;
   top: 20px;

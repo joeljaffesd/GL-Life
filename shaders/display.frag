@@ -68,7 +68,7 @@ void main() {
   }
   
   // Loop through stroke particles
-  for(int i = 0; i < uNumStrokes; i++) {
+  for(int i = 0; i < uNumStrokes && i < 200; i++) {
     
     // Get stroke particle position
     vec2 strokePos = uStrokePositions[i].xy;

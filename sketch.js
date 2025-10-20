@@ -116,8 +116,11 @@ function draw() {
     phase = 0;
   }
 
-  // Prepare stroke data for shader
-  const strokeData = prepareStrokeData();
+  // Prepare stroke data for shader - always process existing strokes
+  let strokeData = { count: 0, positions: [], types: [] };
+  if (strokes.length > 0 || currentStroke.length > 0) {
+    strokeData = prepareStrokeData();
+  }
 
   // simulation step
   agentsNext.begin();
@@ -130,8 +133,13 @@ function draw() {
   simProgram.setUniform("uResolution", [agentsNext.width, agentsNext.height]);
   simProgram.setUniform("uParameters", parameterData);
   simProgram.setUniform("uNumStrokes", strokeData.count);
-  simProgram.setUniform("uStrokePositions", strokeData.positions);
-  simProgram.setUniform("uStrokeTypes", strokeData.types);
+  
+  // Only set stroke uniforms if we have stroke data
+  if (strokeData.count > 0) {
+    simProgram.setUniform("uStrokePositions", strokeData.positions);
+    simProgram.setUniform("uStrokeTypes", strokeData.types);
+  }
+  
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
   first = false; // set first to false after first pass
@@ -149,8 +157,13 @@ function draw() {
   displayProgram.setUniform("uParticleSize", 5.0); // Adjust as needed
   displayProgram.setUniform("uResolution", [width, height]);
   displayProgram.setUniform("uNumStrokes", strokeData.count);
-  displayProgram.setUniform("uStrokePositions", strokeData.positions);
-  displayProgram.setUniform("uStrokeTypes", strokeData.types);
+  
+  // Only set stroke uniforms if we have stroke data
+  if (strokeData.count > 0) {
+    displayProgram.setUniform("uStrokePositions", strokeData.positions);
+    displayProgram.setUniform("uStrokeTypes", strokeData.types);
+  }
+  
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   
   // Swap buffers for next frame
@@ -160,7 +173,16 @@ function draw() {
 // Prepare stroke data for shaders
 function prepareStrokeData() {
   const maxStrokes = 200; // Reduced for better performance
-  const strokesToUse = strokes.slice(-maxStrokes); // Use most recent strokes
+  
+  // Combine permanent strokes with current stroke being drawn
+  let allStrokes = [...strokes];
+  if (currentStroke.length > 0) {
+    // Add current stroke being drawn for real-time feedback
+    const currentStrokeParticles = interpolateStroke(currentStroke, strokeWidth);
+    allStrokes = [...allStrokes, ...currentStrokeParticles];
+  }
+  
+  const strokesToUse = allStrokes.slice(-maxStrokes); // Use most recent strokes
   
   const positions = [];
   const types = [];
@@ -202,6 +224,13 @@ function setupControls() {
   const drawModeCheckbox = document.getElementById('drawMode');
   drawModeCheckbox.addEventListener('change', (e) => {
     drawMode = e.target.checked;
+    // Update cursor style
+    const canvas = document.querySelector('canvas');
+    if (drawMode) {
+      canvas.classList.add('draw-mode');
+    } else {
+      canvas.classList.remove('draw-mode');
+    }
   });
 
   // Stroke width slider
@@ -240,14 +269,14 @@ function mousePressed() {
     isDrawing = true;
     currentStroke = [];
     // Convert p5 coordinates to normalized coordinates
+    // Note: p5 uses (0,0) at top-left, but we need (0,0) at bottom-left for WebGL
     const normalizedX = mouseX / width;
-    const normalizedY = mouseY / height;
+    const normalizedY = 1.0 - (mouseY / height); // Flip Y coordinate
     currentStroke.push({
       x: normalizedX,
       y: normalizedY,
       type: selectedColor
     });
-    return false; // Prevent default behavior
   }
 }
 
@@ -255,22 +284,28 @@ function mouseDragged() {
   if (drawMode && isDrawing && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
     // Convert p5 coordinates to normalized coordinates
     const normalizedX = mouseX / width;
-    const normalizedY = mouseY / height;
+    const normalizedY = 1.0 - (mouseY / height); // Flip Y coordinate
     
     // Add point if it's far enough from the last point
     if (currentStroke.length > 0) {
       const lastPoint = currentStroke[currentStroke.length - 1];
       const distance = dist(normalizedX, normalizedY, lastPoint.x, lastPoint.y);
       
-      if (distance > 0.005) { // Minimum distance between points (reduced for smoother strokes)
+      if (distance > 0.003) { // Reduced minimum distance for smoother strokes
         currentStroke.push({
           x: normalizedX,
           y: normalizedY,
           type: selectedColor
         });
       }
+    } else {
+      // First point after mousePressed
+      currentStroke.push({
+        x: normalizedX,
+        y: normalizedY,
+        type: selectedColor
+      });
     }
-    return false; // Prevent default behavior
   }
 }
 
@@ -278,12 +313,16 @@ function mouseReleased() {
   if (drawMode && isDrawing && currentStroke.length > 0) {
     // Interpolate points along the stroke to create particles
     const interpolatedStroke = interpolateStroke(currentStroke, strokeWidth);
-    strokes.push(...interpolatedStroke);
+    
+    // Add to existing strokes (don't replace)
+    strokes = strokes.concat(interpolatedStroke);
     
     // Limit total stroke particles
     if (strokes.length > maxStrokeParticles) {
       strokes = strokes.slice(strokes.length - maxStrokeParticles);
     }
+    
+    console.log(`Added stroke with ${interpolatedStroke.length} particles. Total: ${strokes.length}`);
     
     currentStroke = [];
     isDrawing = false;
@@ -292,16 +331,17 @@ function mouseReleased() {
 
 // Interpolate points along a stroke to create dense particle distribution
 function interpolateStroke(stroke, width) {
-  if (stroke.length < 2) return stroke;
+  if (stroke.length < 1) return [];
+  if (stroke.length === 1) return [stroke[0]]; // Single point
   
   const particles = [];
-  const baseParticlesPerUnit = width / 3; // Base density of particles
+  const baseParticlesPerUnit = Math.max(1, width / 8); // Base density of particles
   
   for (let i = 0; i < stroke.length - 1; i++) {
     const p1 = stroke[i];
     const p2 = stroke[i + 1];
     const distance = dist(p1.x, p1.y, p2.x, p2.y);
-    const numParticles = Math.max(1, Math.floor(distance * baseParticlesPerUnit * 2000));
+    const numParticles = Math.max(1, Math.floor(distance * baseParticlesPerUnit * 1000));
     
     for (let j = 0; j < numParticles; j++) {
       const t = j / numParticles;
@@ -309,10 +349,10 @@ function interpolateStroke(stroke, width) {
       const y = lerp(p1.y, p2.y, t);
       
       // Add multiple particles in a circle for thickness
-      const numThicknessParticles = Math.max(1, Math.floor(width / 8));
+      const numThicknessParticles = Math.max(1, Math.floor(width / 10));
       for (let k = 0; k < numThicknessParticles; k++) {
-        const angle = (k / numThicknessParticles) * TWO_PI;
-        const maxRadius = width * 0.0008; // Scale radius based on stroke width
+        const angle = (k / numThicknessParticles) * TWO_PI + random(-0.5, 0.5);
+        const maxRadius = width * 0.0005; // Scale radius based on stroke width
         const radius = random(0, maxRadius);
         const offsetX = cos(angle) * radius;
         const offsetY = sin(angle) * radius;
@@ -327,4 +367,66 @@ function interpolateStroke(stroke, width) {
   }
   
   return particles;
+}
+
+// Draw preview of current stroke being drawn
+function drawStrokePreview() {
+  // Set stroke properties based on selected color
+  const colors = [
+    [255, 51, 51],   // Red
+    [51, 255, 51],   // Green
+    [51, 51, 255],   // Blue
+    [255, 255, 51],  // Yellow
+    [255, 51, 255],  // Magenta
+    [51, 255, 255]   // Cyan
+  ];
+  
+  const color = colors[selectedColor];
+  stroke(color[0], color[1], color[2], 200); // Semi-transparent
+  strokeWeight(strokeWidth * 0.5); // Preview at half width for clarity
+  noFill();
+  
+  // Draw the stroke path
+  if (currentStroke.length > 1) {
+    beginShape();
+    for (let point of currentStroke) {
+      // Convert back from normalized coordinates to screen coordinates
+      // Remember to flip Y coordinate back
+      const screenX = point.x * width - width/2;
+      const screenY = (1.0 - point.y) * height - height/2;
+      vertex(screenX, screenY);
+    }
+    endShape();
+  }
+  
+  // Reset drawing state
+  noStroke();
+}
+
+// Draw cursor indicator when in draw mode
+function drawCursorIndicator() {
+  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    // Set stroke properties based on selected color
+    const colors = [
+      [255, 51, 51],   // Red
+      [51, 255, 51],   // Green
+      [51, 51, 255],   // Blue
+      [255, 255, 51],  // Yellow
+      [255, 51, 255],  // Magenta
+      [51, 255, 255]   // Cyan
+    ];
+    
+    const color = colors[selectedColor];
+    stroke(color[0], color[1], color[2], 150);
+    strokeWeight(2);
+    noFill();
+    
+    // Draw circle at cursor position (converted to WebGL coordinates)
+    const cursorX = mouseX - width/2;
+    const cursorY = mouseY - height/2;
+    circle(cursorX, cursorY, strokeWidth);
+    
+    // Reset drawing state
+    noStroke();
+  }
 }
