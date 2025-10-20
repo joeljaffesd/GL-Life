@@ -14,6 +14,7 @@ uniform int uNumStrokes; // Number of stroke particles
 uniform sampler2D uStrokeTexture; // Stroke particle data texture
 uniform sampler2D uStrokeConnectivityTexture; // Stroke connectivity data texture
 uniform float uStrokeTextureSize; // Size of stroke texture (e.g., 100 for 100x100)
+uniform float uStrokeMass; // Mass of stroke particles (for display scaling)
 
 // In GLSL 300 ES, the varying keyword is replaced with in/out
 in vec2 vTexCoord;
@@ -114,7 +115,7 @@ void main() {
     
     // Extract connectivity information
     vec2 nextPos = connectivityData.rg; // Next point position
-    float strokeProgress = connectivityData.b; // Progress along stroke (0-1)
+    float strokeMass = connectivityData.b; // Mass from texture (0-1)
     bool hasNext = connectivityData.a > 0.5; // Has next point
     
     // Choose color based on stroke type
@@ -128,13 +129,17 @@ void main() {
     else if(type == 4) color = vec3(1.0, 0.3, 1.0); // Magenta
     else color = vec3(0.3, 1.0, 1.0); // Cyan
     
+    // Mass-based visual scaling
+    float massScale = 1.0 + strokeMass * 1.5; // Scale size based on mass (1.0 to 2.5x)
+    
     // Render stroke particle
     float distance = length((pixelPos - strokePos) * uResolution);
-    float strokeSize = uParticleSize * (isMainPoint ? 2.0 : 1.2);
+    float strokeSize = uParticleSize * (isMainPoint ? 2.0 : 1.2) * massScale;
     
     if(distance < strokeSize) {
       float edge = strokeSize - 1.0;
       float alpha = isMainPoint ? 0.9 : 0.6;
+      alpha *= (0.7 + strokeMass * 0.3); // Higher mass = more visible
       
       if(distance > edge) {
         alpha *= (1.0 - (distance - edge));
@@ -145,7 +150,7 @@ void main() {
     
     // Draw connecting line to next point (only for main points with valid next points)
     if (isMainPoint && hasNext && nextPos.x > 0.0 && nextPos.y > 0.0) {
-      float lineWidth = uParticleSize * 0.8;
+      float lineWidth = uParticleSize * 0.8 * massScale; // Line width scales with mass
       float distToLine = distanceToLineSegment(pixelPos, strokePos, nextPos, lineWidth / max(uResolution.x, uResolution.y));
       
       // Convert distance to screen space
@@ -155,9 +160,8 @@ void main() {
         // Create smooth line with anti-aliasing
         float lineAlpha = 1.0 - smoothstep(lineWidth * 0.5, lineWidth, screenDistToLine);
         
-        // Vary line opacity based on stroke progress (fade at ends)
-        float progressFade = 1.0 - abs(strokeProgress - 0.5) * 0.4;
-        lineAlpha *= progressFade * 0.7;
+        // Line opacity also scales with mass
+        lineAlpha *= (0.5 + strokeMass * 0.5);
         
         fragColor = vec4(mix(fragColor.rgb, color, lineAlpha), 1.0);
       }

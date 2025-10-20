@@ -177,6 +177,7 @@ function draw() {
   simProgram.setUniform("uStrokeTexture", strokeTexture);
   simProgram.setUniform("uStrokeConnectivityTexture", strokeConnectivityTexture);
   simProgram.setUniform("uStrokeTextureSize", strokeTextureSize);
+  simProgram.setUniform("uStrokeMass", strokeWidth / 50.0); // Normalize stroke width to mass (1-50 -> 0.02-1.0)
   
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   agentsNext.end();
@@ -198,6 +199,7 @@ function draw() {
   displayProgram.setUniform("uStrokeTexture", strokeTexture);
   displayProgram.setUniform("uStrokeConnectivityTexture", strokeConnectivityTexture);
   displayProgram.setUniform("uStrokeTextureSize", strokeTextureSize);
+  displayProgram.setUniform("uStrokeMass", strokeWidth / 50.0); // Mass for display scaling
   
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
   
@@ -302,13 +304,13 @@ function updateStrokeTexture() {
     const ndcX = (texX / strokeTextureSize) * 2.0 - 1.0 + (1.0 / strokeTextureSize);
     const ndcY = (texY / strokeTextureSize) * 2.0 - 1.0 + (1.0 / strokeTextureSize);
     
-    // Connectivity texture: next point position and stroke info
+    // Connectivity texture: next point position, stroke info, and mass
     const nextX = strokeParticle.nextPointX >= 0 ? Math.round(strokeParticle.nextPointX * 255) : 0;
     const nextY = strokeParticle.nextPointY >= 0 ? Math.round(strokeParticle.nextPointY * 255) : 0;
-    const strokeIdx = strokeParticle.strokeIndex >= 0 ? Math.round((strokeParticle.strokeIndex / Math.max(1, strokeParticle.totalStrokePoints - 1)) * 255) : 0;
+    const strokeMass = Math.round((strokeWidth / 50.0) * 255); // Mass based on current stroke width (0-255)
     const hasNext = strokeParticle.nextPointX >= 0 ? 255 : 0;
     
-    stroke(nextX, nextY, strokeIdx, hasNext);
+    stroke(nextX, nextY, strokeMass, hasNext);
     point(ndcX, ndcY);
   }
   

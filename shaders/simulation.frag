@@ -18,6 +18,7 @@ uniform int uNumStrokes; // Number of stroke particles
 uniform sampler2D uStrokeTexture; // Stroke particle data texture
 uniform sampler2D uStrokeConnectivityTexture; // Stroke connectivity data texture
 uniform float uStrokeTextureSize; // Size of stroke texture (e.g., 100 for 100x100)
+uniform float uStrokeMass; // Mass of stroke particles (from width slider)
 
 // In GLSL 300 ES, the varying keyword is replaced with in/out
 in vec2 vTexCoord;
@@ -156,14 +157,17 @@ void main() {
         float texY = (float(i / int(uStrokeTextureSize)) + 0.5) / uStrokeTextureSize;
         vec2 strokeTexCoord = vec2(texX, texY);
         
-        // Sample stroke data from texture
+        // Sample stroke data from both textures
         vec4 strokeData = texture(uStrokeTexture, strokeTexCoord);
+        vec4 connectivityData = texture(uStrokeConnectivityTexture, strokeTexCoord);
         
-        // Extract and decode stroke information from texture
-        // Values are encoded as 0-255 in texture, need to convert back to 0-1
-        vec2 strokePos = strokeData.rg; // Already normalized by texture sampling
-        float strokeType = strokeData.b; // Already normalized by texture sampling
-        float validFlag = strokeData.a;  // Already normalized by texture sampling
+        // Extract stroke information from main texture
+        vec2 strokePos = strokeData.rg; // Position
+        float strokeType = strokeData.b; // Type
+        float validFlag = strokeData.a;  // Valid flag
+        
+        // Extract mass information from connectivity texture
+        float strokeMass = connectivityData.b; // Mass encoded in blue channel (0-1)
         
         // skip invalid stroke particles (alpha < 0.5 means invalid)
         if (validFlag < 0.5) {
@@ -202,11 +206,16 @@ void main() {
 
         float timeStep = 0.05;
 
+        // Mass scaling for stroke forces
+        // Stroke mass affects the force they exert (heavier strokes = stronger force)
+        float massScaling = 1.0 + strokeMass * 2.0; // Scale from 1.0 to 3.0 based on mass
+        
         // "personal space" - stroke particles are static, so only affect moving particles
         if (distance < ruleLookup.g && distance > 0.0) {
           vec2 force = direction;
           force *= abs(ruleLookup.r) * -3.0;
           force *= map(distance, 0.0, ruleLookup.g, 1.0, 0.0);
+          force *= massScaling; // Apply mass scaling
           force *= timeStep;
           totalForce += force;
         }
@@ -216,13 +225,16 @@ void main() {
           vec2 force = direction;
           force *= ruleLookup.r;
           force *= map(distance, 0.0, ruleLookup.b, 1.0, 0.0);
+          force *= massScaling; // Apply mass scaling
           force *= timeStep;
           totalForce += force;
         }
       }
 
-      // integration
-      acceleration += totalForce;
+      // integration with mass scaling
+      // Simulation particles have mass = 1.0, so F = ma becomes a = F/1 = F
+      float particleMass = 1.0;
+      acceleration += totalForce / particleMass;
       particleVel += acceleration;
       particleVel *= 0.3; // friction 
 
