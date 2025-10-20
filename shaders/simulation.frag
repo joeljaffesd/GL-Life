@@ -16,6 +16,7 @@ uniform vec4 uParameters[36]; // assuming numTypes = 6
 // Stroke uniforms - now using texture instead of arrays
 uniform int uNumStrokes; // Number of stroke particles
 uniform sampler2D uStrokeTexture; // Stroke particle data texture
+uniform sampler2D uStrokeConnectivityTexture; // Stroke connectivity data texture
 uniform float uStrokeTextureSize; // Size of stroke texture (e.g., 100 for 100x100)
 
 // In GLSL 300 ES, the varying keyword is replaced with in/out

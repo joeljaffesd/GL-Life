@@ -30,6 +30,7 @@ let maxStrokeParticles = 10000; // Increased to 10k with texture storage
 
 // Stroke texture system
 let strokeTexture; // Framebuffer for stroke particles
+let strokeConnectivityTexture; // Framebuffer for stroke connectivity data
 let strokeTextureSize = 100; // 100x100 = 10k particles (adjustable)
 let strokeCount = 0; // Current number of stroke particles
 let strokeTextureNeedsUpdate = false; // Flag to track when texture needs rebuilding
@@ -110,6 +111,7 @@ function setup() {
     format: FLOAT,
   };
   strokeTexture = createFramebuffer(strokeOptions);
+  strokeConnectivityTexture = createFramebuffer(strokeOptions);
 
   // Setup UI controls
   setupControls();
@@ -128,6 +130,10 @@ function setup() {
   strokeTexture.begin();
   background(0, 0, 0, 0);
   strokeTexture.end();
+  
+  strokeConnectivityTexture.begin();
+  background(0, 0, 0, 0);
+  strokeConnectivityTexture.end();
   
   setParameters() // init params
 }
@@ -169,6 +175,7 @@ function draw() {
   simProgram.setUniform("uParameters", parameterData);
   simProgram.setUniform("uNumStrokes", strokeCount);
   simProgram.setUniform("uStrokeTexture", strokeTexture);
+  simProgram.setUniform("uStrokeConnectivityTexture", strokeConnectivityTexture);
   simProgram.setUniform("uStrokeTextureSize", strokeTextureSize);
   
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
@@ -189,6 +196,7 @@ function draw() {
   displayProgram.setUniform("uResolution", [width, height]);
   displayProgram.setUniform("uNumStrokes", strokeCount);
   displayProgram.setUniform("uStrokeTexture", strokeTexture);
+  displayProgram.setUniform("uStrokeConnectivityTexture", strokeConnectivityTexture);
   displayProgram.setUniform("uStrokeTextureSize", strokeTextureSize);
   
   quad(-1, -1, 1, -1, 1, 1, -1, 1);
@@ -207,22 +215,30 @@ function updateStrokeTexture() {
     const epsilon = 0.005;
     const simplifiedCurrent = douglasPeucker(currentStroke, epsilon);
     
-    // Convert simplified points to particles without full interpolation
-    const currentParticles = simplifiedCurrent.map(point => ({
+    // Convert simplified points to particles with connectivity info
+    const currentParticles = simplifiedCurrent.map((point, i) => ({
       x: point.x,
       y: point.y,
       type: point.type,
-      isMainPoint: true
+      isMainPoint: true,
+      strokeIndex: i,
+      totalStrokePoints: simplifiedCurrent.length,
+      nextPointX: i < simplifiedCurrent.length - 1 ? simplifiedCurrent[i + 1].x : -1,
+      nextPointY: i < simplifiedCurrent.length - 1 ? simplifiedCurrent[i + 1].y : -1
     }));
     
     allStrokes = [...allStrokes, ...currentParticles];
   } else if (currentStroke.length > 0) {
     // For short strokes, just add the points directly
-    allStrokes = [...allStrokes, ...currentStroke.map(point => ({
+    allStrokes = [...allStrokes, ...currentStroke.map((point, i) => ({
       x: point.x,
       y: point.y,
       type: point.type,
-      isMainPoint: true
+      isMainPoint: true,
+      strokeIndex: i,
+      totalStrokePoints: currentStroke.length,
+      nextPointX: i < currentStroke.length - 1 ? currentStroke[i + 1].x : -1,
+      nextPointY: i < currentStroke.length - 1 ? currentStroke[i + 1].y : -1
     }))];
   }
   
@@ -235,36 +251,32 @@ function updateStrokeTexture() {
   
   if (strokeCount === 0) {
     strokeTexture.end();
+    
+    strokeConnectivityTexture.begin();
+    background(0, 0, 0, 0);
+    strokeConnectivityTexture.end();
     return;
   }
   
-  // Optimized rendering using point() for better performance
+  // Render position and type data to main texture
   push();
-  
-  // Set up coordinate system for texture writing
   camera(0, 0, 1, 0, 0, 0, 0, 1, 0);
   ortho(-1, 1, -1, 1, -1, 1);
-  
-  // Use point rendering for maximum efficiency
   strokeWeight(1);
   
-  // Render all points efficiently
   for (let i = 0; i < strokeCount; i++) {
     const strokeParticle = strokesToUse[i];
     
-    // Map linear index to 2D texture coordinates  
     const texX = i % strokeTextureSize;
     const texY = Math.floor(i / strokeTextureSize);
-    
-    // Convert to normalized device coordinates [-1, 1]
     const ndcX = (texX / strokeTextureSize) * 2.0 - 1.0 + (1.0 / strokeTextureSize);
     const ndcY = (texY / strokeTextureSize) * 2.0 - 1.0 + (1.0 / strokeTextureSize);
     
-    // Encode stroke data in stroke color
+    // Main texture: position and type
     const r = Math.round(strokeParticle.x * 255);
     const g = Math.round(strokeParticle.y * 255);  
     const b = Math.round((strokeParticle.type / numTypes) * 255);
-    const a = 255;
+    const a = strokeParticle.isMainPoint ? 255 : 128; // Distinguish main points
     
     stroke(r, g, b, a);
     point(ndcX, ndcY);
@@ -272,6 +284,36 @@ function updateStrokeTexture() {
   
   pop();
   strokeTexture.end();
+  
+  // Render connectivity data to second texture
+  strokeConnectivityTexture.begin();
+  background(0, 0, 0, 0);
+  
+  push();
+  camera(0, 0, 1, 0, 0, 0, 0, 1, 0);
+  ortho(-1, 1, -1, 1, -1, 1);
+  strokeWeight(1);
+  
+  for (let i = 0; i < strokeCount; i++) {
+    const strokeParticle = strokesToUse[i];
+    
+    const texX = i % strokeTextureSize;
+    const texY = Math.floor(i / strokeTextureSize);
+    const ndcX = (texX / strokeTextureSize) * 2.0 - 1.0 + (1.0 / strokeTextureSize);
+    const ndcY = (texY / strokeTextureSize) * 2.0 - 1.0 + (1.0 / strokeTextureSize);
+    
+    // Connectivity texture: next point position and stroke info
+    const nextX = strokeParticle.nextPointX >= 0 ? Math.round(strokeParticle.nextPointX * 255) : 0;
+    const nextY = strokeParticle.nextPointY >= 0 ? Math.round(strokeParticle.nextPointY * 255) : 0;
+    const strokeIdx = strokeParticle.strokeIndex >= 0 ? Math.round((strokeParticle.strokeIndex / Math.max(1, strokeParticle.totalStrokePoints - 1)) * 255) : 0;
+    const hasNext = strokeParticle.nextPointX >= 0 ? 255 : 0;
+    
+    stroke(nextX, nextY, strokeIdx, hasNext);
+    point(ndcX, ndcY);
+  }
+  
+  pop();
+  strokeConnectivityTexture.end();
   
   console.log(`Updated stroke texture with ${strokeCount} particles`);
 }
@@ -406,16 +448,20 @@ function interpolateStroke(stroke, width) {
   
   const particles = [];
   
-  // Generate particles only for the simplified stroke points
+  // Generate particles for the simplified stroke points with connectivity info
   for (let i = 0; i < simplifiedStroke.length; i++) {
     const point = simplifiedStroke[i];
     
-    // Add the main stroke point
+    // Add the main stroke point with connectivity information
     particles.push({
       x: point.x,
       y: point.y,
       type: point.type,
-      isMainPoint: true
+      isMainPoint: true,
+      strokeIndex: i,
+      totalStrokePoints: simplifiedStroke.length,
+      nextPointX: i < simplifiedStroke.length - 1 ? simplifiedStroke[i + 1].x : -1,
+      nextPointY: i < simplifiedStroke.length - 1 ? simplifiedStroke[i + 1].y : -1
     });
     
     // Add thickness particles around each simplified point (fewer than before)
@@ -431,7 +477,11 @@ function interpolateStroke(stroke, width) {
         x: constrain(point.x + offsetX, 0, 1),
         y: constrain(point.y + offsetY, 0, 1),
         type: point.type,
-        isMainPoint: false
+        isMainPoint: false,
+        strokeIndex: -1,
+        totalStrokePoints: 0,
+        nextPointX: -1,
+        nextPointY: -1
       });
     }
   }
