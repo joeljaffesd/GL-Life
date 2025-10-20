@@ -21,13 +21,16 @@ let parameterData = [];
 let phase = 0;
 
 // Stroke drawing variables
-let drawMode = false;
 let strokeWidth = 15;
 let selectedColor = 0;
 let isDrawing = false;
 let strokes = []; // Array to store all stroke data
 let currentStroke = []; // Current stroke being drawn
 let maxStrokeParticles = 1000; // Maximum number of stroke particles
+
+// Framerate counter
+let framerateDelta = 0;
+let framerateUpdateTime = 0;
 
 // load shaders
 function preload() {
@@ -108,6 +111,8 @@ function setup() {
 
 // per-frame sim-step and draw
 function draw() {
+  // Update framerate counter
+  updateFramerate();
 
   // reset sim every 7 seconds
   phase++;
@@ -220,18 +225,9 @@ function keyPressed() {
 
 // Setup UI control event listeners
 function setupControls() {
-  // Draw mode toggle
-  const drawModeCheckbox = document.getElementById('drawMode');
-  drawModeCheckbox.addEventListener('change', (e) => {
-    drawMode = e.target.checked;
-    // Update cursor style
-    const canvas = document.querySelector('canvas');
-    if (drawMode) {
-      canvas.classList.add('draw-mode');
-    } else {
-      canvas.classList.remove('draw-mode');
-    }
-  });
+  // Set canvas cursor to crosshair always
+  const canvas = document.querySelector('canvas');
+  canvas.style.cursor = 'crosshair';
 
   // Stroke width slider
   const strokeWidthSlider = document.getElementById('strokeWidth');
@@ -265,7 +261,7 @@ function setupControls() {
 
 // Mouse event handlers for drawing
 function mousePressed() {
-  if (drawMode && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
     isDrawing = true;
     currentStroke = [];
     // Convert p5 coordinates to normalized coordinates
@@ -281,7 +277,7 @@ function mousePressed() {
 }
 
 function mouseDragged() {
-  if (drawMode && isDrawing && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+  if (isDrawing && mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
     // Convert p5 coordinates to normalized coordinates
     const normalizedX = mouseX / width;
     const normalizedY = 1.0 - (mouseY / height); // Flip Y coordinate
@@ -310,7 +306,7 @@ function mouseDragged() {
 }
 
 function mouseReleased() {
-  if (drawMode && isDrawing && currentStroke.length > 0) {
+  if (isDrawing && currentStroke.length > 0) {
     // Interpolate points along the stroke to create particles
     const interpolatedStroke = interpolateStroke(currentStroke, strokeWidth);
     
@@ -428,5 +424,16 @@ function drawCursorIndicator() {
     
     // Reset drawing state
     noStroke();
+  }
+}
+
+// Update framerate display
+function updateFramerate() {
+  framerateDelta++;
+  if (millis() - framerateUpdateTime > 500) { // Update every 500ms
+    const fps = Math.round(framerateDelta * 2); // Calculate FPS (2 times per second)
+    document.getElementById('framerate').textContent = `FPS: ${fps}`;
+    framerateDelta = 0;
+    framerateUpdateTime = millis();
   }
 }

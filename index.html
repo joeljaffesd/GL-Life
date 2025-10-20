@@ -16,10 +16,6 @@
   <body>
     <div id="controls">
       <div class="control-group">
-        <label for="drawMode">Draw Mode:</label>
-        <input type="checkbox" id="drawMode" />
-      </div>
-      <div class="control-group">
         <label for="strokeWidth">Stroke Width:</label>
         <input type="range" id="strokeWidth" min="5" max="50" value="15" />
         <span id="strokeWidthValue">15</span>
@@ -39,6 +35,7 @@
         <button id="clearStrokes">Clear Strokes</button>
       </div>
     </div>
+    <div id="framerate">FPS: 0</div>
     <script src="sketch.js"></script>
   </body>
 </html>

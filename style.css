@@ -6,9 +6,6 @@ html, body {
 
 canvas {
   display: block;
-}
-
-canvas.draw-mode {
   cursor: crosshair;
 }
 
@@ -84,4 +81,17 @@ canvas.draw-mode {
 
 #clearStrokes:hover {
   background: #ff6666;
+}
+
+#framerate {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  z-index: 1000;
+  font-size: 14px;
+  font-family: monospace;
 }
